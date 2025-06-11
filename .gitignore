@@ -1,0 +1,12 @@
+# Dependencias
+/node_modules
+
+# Archivos compilados de TypeScript
+/dist
+
+# Archivo de variables de entorno (¡Contiene secretos!)
+.env
+
+# Archivos de log y de build
+pnpm-debug.log*
+.tsbuildinfo
