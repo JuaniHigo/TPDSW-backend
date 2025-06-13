@@ -4,19 +4,40 @@
 import { Request, Response } from 'express'; 
 import pool from '../config/database';
 import { User } from '../interfaces/user.interface';
+import bcrypt from 'bcrypt';
 
-// Sintaxis definitiva: Tipamos los argumentos y el valor de retorno de la Promise
 export const createUser = async (req: Request, res: Response): Promise<void> => {
     try {
         const newUser: User = req.body;
+
+        // Validaciones básicas
         if (!newUser.dni || !newUser.nombre || !newUser.email || !newUser.password) {
             res.status(400).json({ message: 'Faltan datos obligatorios' });
-            return; // Usamos return solo para cortar la ejecución
+            return;
         }
-        
-        const sql = "INSERT INTO Usuarios (dni, nombre, apellido, email, password) VALUES (?, ?, ?, ?, ?)";
+
+        // Validar DNI (7 u 8 dígitos numéricos)
+        if (!/^\d{7,8}$/.test(newUser.dni)) {
+            res.status(400).json({ message: 'DNI no válido' });
+            return;
+        }
+
+        // (Opcional) Validar email con regex simple o librería externa
+        // Aquí podrías agregar validación de email si querés
+
+        // Hashear la contraseña antes de guardarla
+        const saltRounds = 10;
+        const hashedPassword = await bcrypt.hash(newUser.password, saltRounds);
+
+        // Insertar en la base de datos
+        const sql = "INSERT INTO Usuarios (dni, nombre, apellido, email, password, fecha_nacimiento) VALUES (?, ?, ?, ?, ?, ?)";
         const [result] = await pool.query(sql, [
-            newUser.dni, newUser.nombre, newUser.apellido, newUser.email, newUser.password
+            newUser.dni,
+            newUser.nombre,
+            newUser.apellido,
+            newUser.email,
+            hashedPassword,
+            newUser.fecha_nacimiento || null
         ]);
 
         const insertedId = (result as any).insertId;
@@ -31,9 +52,10 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
     }
 };
 
+
 export const getAllUsers = async (req: Request, res: Response): Promise<void> => {
     try {
-        const [rows] = await pool.query("SELECT id_usuario, dni, nombre, apellido, email FROM Usuarios");
+        const [rows] = await pool.query("SELECT id_usuario, dni, nombre, apellido, email, fecha_nacimiento FROM Usuarios");
         res.status(200).json(rows);
     } catch (error) {
         res.status(500).json({ message: 'Error interno del servidor', error });
@@ -43,7 +65,7 @@ export const getAllUsers = async (req: Request, res: Response): Promise<void> =>
 export const getUserById = async (req: Request, res: Response): Promise<void> => {
     try {
         const { id } = req.params;
-        const [rows] = await pool.query("SELECT id_usuario, dni, nombre, apellido, email FROM Usuarios WHERE id_usuario = ?", [id]);
+        const [rows] = await pool.query("SELECT id_usuario, dni, nombre, apellido, email, fecha_nacimiento FROM Usuarios WHERE id_usuario = ?", [id]);
         
         if ((rows as any[]).length <= 0) {
             res.status(404).json({ message: "Usuario no encontrado" });

@@ -4,7 +4,9 @@ import express, { Application } from 'express';
 import dotenv from 'dotenv';
 import userRoutes from './routes/user.routes'; // Importamos las rutas de usuario que creamos
 
-dotenv.config(); // Cargamos las variables de entorno
+dotenv.config();
+console.log('DB_USER:', process.env.DB_USER); // Debería imprimir 'root' u otro valor
+
 
 const app: Application = express();
 const PORT = process.env.PORT || 3000;
@@ -16,7 +18,7 @@ app.use(express.json());
 // --- Rutas ---
 // Le decimos a la aplicación que use nuestras rutas de usuario para cualquier
 // petición que empiece con '/api/usuarios'
-app.use('/api/usuarios', userRoutes);
+app.use('/api/users', userRoutes);
 
 // --- Iniciar el servidor ---
 app.listen(PORT, () => {
