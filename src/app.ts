@@ -1,30 +1,33 @@
-// src/app.ts
-
 import express, { Application } from 'express';
 import dotenv from 'dotenv';
-import userRoutes from './routes/user.routes'; // Importamos las rutas de usuario que creamos
+import cors from 'cors';
 import compression from 'compression';
-import cors from 'cors'; 
 
+// Importación de todas las rutas
+import userRoutes from './routes/user.routes';
 import sociosRoutes from './routes/socios.routes'; 
+import clubesRoutes from './routes/clubes.routes';
+import estadiosRoutes from './routes/estadios.routes';
+import eventosRoutes from './routes/eventos.routes';
+
 dotenv.config();
 
 const app: Application = express();
 const PORT = process.env.PORT || 3000;
 
-// --- Middlewares ---
-// Este middleware permite que Express entienda el formato JSON en el cuerpo de las peticiones POST y PUT
-app.use(express.json()); 
+// Middlewares
 app.use(compression());
-app.use(cors());        
+app.use(cors());
+app.use(express.json()); 
 
-// --- Rutas ---
-// Le decimos a la aplicación que use nuestras rutas de usuario para cualquier
-// petición que empiece con '/api/users'
+// Rutas
 app.use('/api/users', userRoutes);
-app.use('/api/socios', sociosRoutes);
+app.use('/api/socios', sociosRoutes); 
+app.use('/api/clubes', clubesRoutes);
+app.use('/api/estadios', estadiosRoutes);
+app.use('/api/eventos', eventosRoutes);
 
-// --- Iniciar el servidor ---
+// Iniciar el servidor
 app.listen(PORT, () => {
     console.log(`Servidor corriendo en el puerto ${PORT}`);
 });
