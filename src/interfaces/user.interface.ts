@@ -6,6 +6,6 @@ export interface User {
   nombre: string;
   apellido: string;
   email:string;
-  password?: string; // Es opcional porque no queremos devolverlo en las consultas
+  password: string; // Es opcional porque no queremos devolverlo en las consultas
   fecha_nacimiento?: Date;
 }

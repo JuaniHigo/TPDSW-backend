@@ -9,6 +9,7 @@ import sociosRoutes from './routes/socios.routes';
 import clubesRoutes from './routes/clubes.routes';
 import estadiosRoutes from './routes/estadios.routes';
 import eventosRoutes from './routes/eventos.routes';
+import authRoutes from './routes/auth.routes'; 
 
 dotenv.config();
 
@@ -21,6 +22,7 @@ app.use(cors());
 app.use(express.json()); 
 
 // Rutas
+app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/socios', sociosRoutes); 
 app.use('/api/clubes', clubesRoutes);

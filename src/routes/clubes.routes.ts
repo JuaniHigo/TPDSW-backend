@@ -1,4 +1,6 @@
 import { Router } from 'express';
+import { isAuth } from '../middlewares/auth.middleware';
+import { isAdmin } from '../middlewares/isAdmin.middleware';
 import {
     getAllClubes,
     getClubById,
@@ -11,8 +13,8 @@ const router = Router();
 
 router.get('/', getAllClubes);
 router.get('/:id', getClubById);
-router.post('/', createClub);
-router.put('/:id', updateClub);
-router.delete('/:id', deleteClub);
+router.post('/',isAdmin, isAuth, createClub);
+router.put('/:id',isAdmin, isAuth, updateClub);
+router.delete('/:id',isAdmin, isAuth, deleteClub);
 
 export default router;

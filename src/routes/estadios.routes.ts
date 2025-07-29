@@ -1,4 +1,6 @@
 import { Router } from 'express';
+import { isAuth } from '../middlewares/auth.middleware';
+import { isAdmin } from '../middlewares/isAdmin.middleware';
 import {
     getAllEstadios,
     getEstadioById,
@@ -11,8 +13,8 @@ const router = Router();
 
 router.get('/', getAllEstadios);
 router.get('/:id', getEstadioById);
-router.post('/', createEstadio);
-router.put('/:id', updateEstadio);
-router.delete('/:id', deleteEstadio);
+router.post('/',isAdmin, isAuth, createEstadio);
+router.put('/:id',isAdmin, isAuth, updateEstadio);
+router.delete('/:id',isAdmin, isAuth, deleteEstadio);
 
 export default router;

@@ -1,4 +1,6 @@
 import { Router } from 'express';
+import { isAuth } from '../middlewares/auth.middleware';
+import { isAdmin } from '../middlewares/isAdmin.middleware';
 import {
     getAllEventos,
     getEventoById,
@@ -9,10 +11,10 @@ import {
 
 const router = Router();
 
-router.get('/', getAllEventos);
-router.get('/:id', getEventoById);
-router.post('/', createEvento);
-router.put('/:id', updateEvento);
-router.delete('/:id', deleteEvento);
+router.get('/', isAuth, getAllEventos);
+router.get('/:id', isAuth, getEventoById);
+router.post('/', isAuth, isAdmin, createEvento);
+router.put('/:id', isAuth,updateEvento);
+router.delete('/:id',isAuth, deleteEvento);
 
 export default router;
