@@ -10,6 +10,7 @@ import clubesRoutes from './routes/clubes.routes';
 import estadiosRoutes from './routes/estadios.routes';
 import eventosRoutes from './routes/eventos.routes';
 import authRoutes from './routes/auth.routes'; 
+import tipoEntradaRoutes from './routes/tipoEntrada.routes';
 
 dotenv.config();
 
@@ -28,6 +29,7 @@ app.use('/api/socios', sociosRoutes);
 app.use('/api/clubes', clubesRoutes);
 app.use('/api/estadios', estadiosRoutes);
 app.use('/api/eventos', eventosRoutes);
+app.use('/api/tipoEntrada', tipoEntradaRoutes);
 
 // Iniciar el servidor
 app.listen(PORT, () => {
