@@ -11,8 +11,8 @@ import {
 
 const router = Router();
 
-router.get('/', isAuth, getAllEventos);
-router.get('/:id', isAuth, getEventoById);
+router.get('/',  getAllEventos);
+router.get('/:id', getEventoById);
 router.post('/', isAuth, isAdmin, createEvento);
 router.put('/:id', isAuth,updateEvento);
 router.delete('/:id',isAuth, deleteEvento);
