@@ -1,7 +1,7 @@
 {
   "name": "tpdsw-backend",
   "version": "1.0.0",
-  "description": "Este repositorio tiene la finalidad de almacenar la parte correspondiente al front-end de nuestro proyecto",
+  "description": "Este repositorio tiene la finalidad de almacenar la parte correspondiente al back-end de nuestro proyecto",
   "main": "index.js",
   "scripts": {
     "dev": "nodemon src/app.ts",
