@@ -15,8 +15,11 @@ export const getAllEventos = async (req: Request, res: Response): Promise<void> 
                 e.torneo,
                 e.estado,
                 cl.nombre AS nombre_local,
+                cl.logo_url AS logo_local,
                 cv.nombre AS nombre_visitante,
+                cv.logo_url AS logo_visitante,
                 est.nombre AS nombre_estadio
+
             FROM eventos AS e
             JOIN clubes AS cl ON e.fk_id_club_local = cl.id_club
             JOIN clubes AS cv ON e.fk_id_club_visitante = cv.id_club
