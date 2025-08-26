@@ -45,15 +45,19 @@ export const getAllEventos = async (req: Request, res: Response): Promise<void> 
     }
 };
 
-// Obtener un evento por ID con detalle
+// En src/controllers/eventos.controller.ts
+
 export const getEventoById = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
     try {
+        // --- ESTA ES LA CONSULTA CORREGIDA ---
         const sql = `
             SELECT 
                 e.*,
                 cl.nombre AS nombre_local,
+                cl.logo_url AS logo_local,      -- <-- AÑADIDO
                 cv.nombre AS nombre_visitante,
+                cv.logo_url AS logo_visitante,  -- <-- AÑADIDO
                 est.nombre AS nombre_estadio
             FROM eventos AS e
             JOIN clubes AS cl ON e.fk_id_club_local = cl.id_club
@@ -61,6 +65,8 @@ export const getEventoById = async (req: Request, res: Response): Promise<void> 
             JOIN estadios AS est ON e.fk_id_estadio = est.id_estadio
             WHERE e.id_evento = ?
         `;
+        // ------------------------------------
+
         const [rows] = await pool.query(sql, [id]);
         if ((rows as any[]).length === 0) {
             res.status(404).json({ message: 'Evento no encontrado' });
@@ -71,7 +77,6 @@ export const getEventoById = async (req: Request, res: Response): Promise<void> 
         res.status(500).json({ message: 'Error interno del servidor', error });
     }
 };
-
 // Crear un nuevo evento
 export const createEvento = async (req: Request, res: Response): Promise<void> => {
     try {

@@ -12,6 +12,7 @@ import eventosRoutes from './routes/eventos.routes';
 import authRoutes from './routes/auth.routes'; 
 import tipoEntradaRoutes from './routes/tipoEntrada.routes';
 import sectoresRoutes from './routes/sectores.routes';
+import pagoRoutes from './routes/pago.routes'; // <-- AÑADIR ESTA LÍNEA
 
 dotenv.config();
 
@@ -32,10 +33,9 @@ app.use('/api/estadios', estadiosRoutes);
 app.use('/api/eventos', eventosRoutes);
 app.use('/api/tipoEntrada', tipoEntradaRoutes);
 app.use('/api/sectores', sectoresRoutes);
+app.use('/api/pagos', pagoRoutes); // <-- AÑADIR ESTA LÍNEA
 
 // Iniciar el servidor
 app.listen(PORT, () => {
     console.log(`Servidor corriendo en el puerto ${PORT}`);
 });
-
-// Este es un cambio de prueba.
