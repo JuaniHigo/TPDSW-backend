@@ -1,5 +1,7 @@
 {
   "name": "tpdsw-backend",
+  "type": "module",
+  "module": "es2022",
   "version": "1.0.0",
   "description": "Este repositorio tiene la finalidad de almacenar la parte correspondiente al back-end de nuestro proyecto",
   "main": "index.js",
@@ -13,6 +15,9 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@mikro-orm/core": "6.5.1",
+    "@mikro-orm/mysql": "6.5.1",
+    "@mikro-orm/sql-highlighter": "1.0.1",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.2",
     "compression": "^1.8.1",
@@ -25,6 +30,7 @@
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "qrcode": "^1.5.4",
+    "reflect-metadata": "0.2.2",
     "uuid": "^11.1.0",
     "zod": "^4.0.13"
   },
@@ -35,7 +41,7 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
     "@types/jsonwebtoken": "^9.0.10",
-    "@types/node": "^24.0.1",
+    "@types/node": "^24.3.0",
     "@types/passport": "^1.0.17",
     "@types/passport-jwt": "^4.0.1",
     "@types/qrcode": "^1.5.5",
