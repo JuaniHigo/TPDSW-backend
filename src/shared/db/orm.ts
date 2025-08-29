@@ -1,11 +1,11 @@
 import { MikroORM } from "@mikro-orm/core";
 import { SqlHighlighter } from "@mikro-orm/sql-highlighter";
 
-export const ormPromise = MikroORM.init({
-  entities: ["./dist/shared/db/entities/**/*.js"],
-  entitiesTs: ["./src/shared/db/entities/**/*.ts"],
-  dbName: "Kicket_db",
-  clientUrl: "mysql://root:password@localhost:3306/kicket",
+export const orm = await MikroORM.init({
+  entities: ["dist/**/*.entity.js"],
+  entitiesTs: ["src/**/*.entity.ts"],
+  dbName: "hc4gmo",
+  clientUrl: "mysql://dsw:dsw@localhost:3306/hc4gmo",
   highlighter: new SqlHighlighter(),
   debug: true,
   schemaGenerator: {
@@ -17,11 +17,10 @@ export const ormPromise = MikroORM.init({
 });
 
 export const syncSchema = async () => {
-  const orm = await ormPromise;
   const generator = orm.getSchemaGenerator();
-  /*
-    await generator.dropSchema(); //never in production
-    await generator.createSchema(); //never in production
-    */
+  /*   
+  await generator.dropSchema()
+  await generator.createSchema()
+  */
   await generator.updateSchema();
 };
