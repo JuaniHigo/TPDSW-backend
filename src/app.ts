@@ -3,7 +3,7 @@ import express, { Application } from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 import compression from "compression";
-import { orm, syncSchema } from "./shared/db/orm.js";
+import { orm, syncSchema } from "./config/mikro-orm.config.js";
 
 // Importación de todas las rutas
 import userRoutes from "./routes/user.routes";

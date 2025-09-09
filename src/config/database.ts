@@ -1,21 +1,44 @@
-// src/config/database.ts
+import { MikroORM, RequestContext } from "@mikro-orm/core";
+import { MySqlDriver } from "@mikro-orm/mysql";
+import config from "./mikro-orm.config";
 
-import mysql from 'mysql2/promise';
-import dotenv from 'dotenv';
+export class Database {
+  private static orm: MikroORM<MySqlDriver>;
 
-dotenv.config(); // Esto carga las variables del archivo .env que creamos
-console.log('DB_USER:', process.env.DB_USER);
+  static async connect(): Promise<MikroORM<MySqlDriver>> {
+    try {
+      this.orm = await MikroORM.init<MySqlDriver>(config);
+      console.log("Base de datos conectada");
+      return this.orm;
+    } catch (error) {
+      console.error("Error de conexion a la base de datos", error);
+      throw error;
+    }
+  }
 
+  static getORM(): MikroORM<MySqlDriver> {
+    if (!this.orm) {
+      throw new Error(
+        "ORM no inicializado, llama a DATABASE.connect() primero"
+      );
+    }
+    return this.orm;
+  }
 
-// Creamos un "pool" de conexiones. Es más eficiente que crear una conexión por cada consulta.
-const pool = mysql.createPool({
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0
-});
+  static getEM() {
+    return this.getORM().em;
+  }
 
-export default pool;
+  static middleware() {
+    return (req: any, res: any, next: any) => {
+      RequestContext.create(this.getORM().em, next);
+    };
+  }
+
+  static async close(): Promise<void> {
+    if (this.orm) {
+      await this.orm.close();
+      console.log("Conexion a la base de datos cerrada");
+    }
+  }
+}
