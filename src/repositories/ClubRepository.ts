@@ -12,10 +12,8 @@ export class ClubRepository extends EntityRepository<Club> {
   }
 
   async getProximoNumeroSocio(clubId: number): Promise<string> {
-    const club = await this.findWithSocios(clubId);
-    if (!club) throw new Error("Club no encontrado");
-
-    const totalSocios = club.socios.length;
+    const club = await this.findOneOrFail(clubId);
+    const totalSocios = await this.em.count(socio, { club: clubId });
     return `${club.prefijo}-${totalSocios + 1}`;
   }
 }

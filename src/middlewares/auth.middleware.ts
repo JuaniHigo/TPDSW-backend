@@ -1,28 +1,30 @@
-import passport from 'passport';
-import { Strategy as JwtStrategy, ExtractJwt } from 'passport-jwt';
-import pool from '../config/database';
+// src/middlewares/auth.middleware.ts
+import passport from "passport";
+import { Strategy as JwtStrategy, ExtractJwt } from "passport-jwt";
+import { Database } from "../config/database"; // <-- Importamos Database
+import { User } from "../entities/User.entity"; // <-- Importamos la Entidad
 
 const opts = {
-    jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-    secretOrKey: process.env.JWT_SECRET as string
+  jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+  secretOrKey: process.env.JWT_SECRET as string,
 };
 
 passport.use(
-    new JwtStrategy(opts, async (jwt_payload, done) => {
-        try {
-            // --- ESTA ES LA LÍNEA CORREGIDA ---
-            // Cambiamos 'Usuarios' a 'usuarios' para que sea consistente
-            const [rows]: any = await pool.query("SELECT * FROM usuarios WHERE id_usuario = ?", [jwt_payload.id_usuario]);
-            // ------------------------------------
+  new JwtStrategy(opts, async (jwt_payload, done) => {
+    try {
+      // Usamos el Entity Manager en lugar de 'pool'
+      const em = Database.getEM().fork();
+      const user = await em.findOne(User, { id: jwt_payload.id_usuario });
 
-            if (rows.length > 0) {
-                return done(null, rows[0]);
-            }
-            return done(null, false);
-        } catch (error) {
-            return done(error, false);
-        }
-    })
+      if (user) {
+        // Devolvemos el objeto de usuario (sin password, gracias a toJSON)
+        return done(null, user.toJSON());
+      }
+      return done(null, false);
+    } catch (error) {
+      return done(error, false);
+    }
+  })
 );
 
-export const isAuth = passport.authenticate('jwt', { session: false });
+export const isAuth = passport.authenticate("jwt", { session: false });

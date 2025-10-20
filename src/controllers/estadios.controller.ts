@@ -1,90 +1,106 @@
-import { Request, Response } from 'express';
-import pool from '../config/database';
-import { Estadio } from '../interfaces/estadios.interface';
+// src/controllers/estadios.controller.ts
+import { Request, Response } from "express";
+import { EstadioService } from "../services/EstadioService";
+import { parseIntOr } from "../utils/parser.utils";
+import { NotFoundError } from "../utils/errors";
+import { Estadio } from "../entities/Estadio.entity"; // <-- Importa la Entidad
 
-// Obtener todos los estadios con paginación
-export const getAllEstadios = async (req: Request, res: Response): Promise<void> => {
-    try {
-        const page = parseInt(req.query.page as string) || 1;
-        const limit = parseInt(req.query.limit as string) || 10;
-        const offset = (page - 1) * limit;
+const estadioService = new EstadioService();
 
-        const [rows] = await pool.query(
-            "SELECT id_estadio, nombre, calle, numero, ciudad FROM estadios LIMIT ? OFFSET ?", 
-            [limit, offset]
-        );
-        
-        const [totalRows]: any = await pool.query("SELECT COUNT(*) as total FROM estadios");
-        const totalEstadios = totalRows[0].total;
+export const getAllEstadios = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const page = parseIntOr(req.query.page, 1);
+    const limit = parseIntOr(req.query.limit, 10);
 
-        res.status(200).json({
-            data: rows,
-            pagination: {
-                total: totalEstadios,
-                page: page,
-                limit: limit,
-                totalPages: Math.ceil(totalEstadios / limit)
-            }
-        });
-    } catch (error) {
-        res.status(500).json({ message: 'Error interno del servidor', error });
-    }
+    const result = await estadioService.getAllEstadios(page, limit);
+    res.status(200).json(result);
+  } catch (error: any) {
+    res
+      .status(500)
+      .json({ message: "Error interno del servidor", error: error.message });
+  }
 };
 
-// Obtener un estadio por ID
-export const getEstadioById = async (req: Request, res: Response): Promise<void> => {
-    const { id } = req.params;
-    try {
-        const [rows] = await pool.query("SELECT id_estadio, nombre, calle, numero, ciudad FROM estadios WHERE id_estadio = ?", [id]);
-        if ((rows as any[]).length === 0) {
-            res.status(404).json({ message: 'Estadio no encontrado' });
-            return;
-        }
-        res.status(200).json((rows as any[])[0]);
-    } catch (error) {
-        res.status(500).json({ message: 'Error interno del servidor', error });
+export const getEstadioById = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  const { id } = req.params;
+  try {
+    const estadio = await estadioService.getEstadioById(Number(id));
+    res.status(200).json(estadio);
+  } catch (error: any) {
+    if (error instanceof NotFoundError) {
+      res.status(404).json({ message: error.message });
+    } else {
+      res
+        .status(500)
+        .json({ message: "Error interno del servidor", error: error.message });
     }
+  }
 };
 
-// Crear un nuevo estadio
-export const createEstadio = async (req: Request, res: Response): Promise<void> => {
-    const newEstadio: Omit<Estadio, 'id_estadio'> = req.body;
-    try {
-        const [result] = await pool.query("INSERT INTO estadios SET ?", [newEstadio]);
-        const insertId = (result as any).insertId;
-        res.status(201).json({ id_estadio: insertId, ...newEstadio });
-    } catch (error) {
-        res.status(500).json({ message: 'Error interno del servidor', error });
-    }
+export const createEstadio = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const newEstadio = await estadioService.createEstadio(
+      req.body as Omit<Estadio, "id">
+    );
+    res.status(201).json(newEstadio);
+  } catch (error: any) {
+    res
+      .status(500)
+      .json({ message: "Error interno del servidor", error: error.message });
+  }
 };
 
-// Actualizar un estadio
-export const updateEstadio = async (req: Request, res: Response): Promise<void> => {
-    const { id } = req.params;
-    const estadioToUpdate: Partial<Estadio> = req.body;
-    try {
-        const [result] = await pool.query("UPDATE estadios SET ? WHERE id_estadio = ?", [estadioToUpdate, id]);
-        if ((result as any).affectedRows === 0) {
-            res.status(404).json({ message: "Estadio no encontrado para actualizar" });
-            return;
-        }
-        res.status(200).json({ message: "Estadio actualizado correctamente" });
-    } catch (error) {
-        res.status(500).json({ message: 'Error interno del servidor', error });
+export const updateEstadio = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  const { id } = req.params;
+  try {
+    const updatedEstadio = await estadioService.updateEstadio(
+      Number(id),
+      req.body as Partial<Estadio>
+    );
+    res
+      .status(200)
+      .json({
+        message: "Estadio actualizado correctamente",
+        estadio: updatedEstadio,
+      });
+  } catch (error: any) {
+    if (error instanceof NotFoundError) {
+      res.status(404).json({ message: error.message });
+    } else {
+      res
+        .status(500)
+        .json({ message: "Error interno del servidor", error: error.message });
     }
+  }
 };
 
-// Eliminar un estadio
-export const deleteEstadio = async (req: Request, res: Response): Promise<void> => {
-    const { id } = req.params;
-    try {
-        const [result] = await pool.query("DELETE FROM estadios WHERE id_estadio = ?", [id]);
-        if ((result as any).affectedRows === 0) {
-            res.status(404).json({ message: "Estadio no encontrado para eliminar" });
-            return;
-        }
-        res.status(200).json({ message: "Estadio eliminado correctamente" });
-    } catch (error) {
-        res.status(500).json({ message: 'Error interno del servidor', error });
+export const deleteEstadio = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  const { id } = req.params;
+  try {
+    await estadioService.deleteEstadio(Number(id));
+    res.status(200).json({ message: "Estadio eliminado correctamente" });
+  } catch (error: any) {
+    if (error instanceof NotFoundError) {
+      res.status(404).json({ message: error.message });
+    } else {
+      res
+        .status(500)
+        .json({ message: "Error interno del servidor", error: error.message });
     }
+  }
 };

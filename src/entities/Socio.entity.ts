@@ -8,8 +8,9 @@ import {
 } from "@mikro-orm/core";
 import { User } from "./User.entity";
 import { Club } from "./Club.entity";
+import { SocioRepository } from "../repositories/SocioRepository";
 
-@Entity({ tableName: "socios" })
+@Entity({ tableName: "socios", repository: () => SocioRepository })
 export class Socio {
   @PrimaryKey({ fieldName: "fk_id_usuario" })
   fkIdUsuario!: number;

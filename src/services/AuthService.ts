@@ -5,13 +5,9 @@ import { Database } from "../config/database";
 import { User, UserRole } from "../entities/User.entity";
 import { UserRepository } from "../repositories/UserRepository";
 
-interface RegisterData {
-  dni: string;
-  nombre: string;
-  apellido: string;
-  email: string;
-  password: string;
-  fecha_nacimiento?: Date;
+// Usamos Partial<User> en lugar de la interfaz
+interface RegisterData extends Partial<User> {
+  password_confirmation?: string; // (si tuvieras)
 }
 
 interface LoginData {
@@ -23,18 +19,21 @@ export class AuthService {
   private userRepository: UserRepository;
 
   constructor() {
+    // Obtenemos el EM del contexto de la request
     this.userRepository = Database.getEM().getRepository(
       User
     ) as UserRepository;
   }
 
-  async register(data: RegisterData): Promise<{ message: string }> {
-    const em = Database.getEM().fork();
+  async register(
+    data: RegisterData
+  ): Promise<{ message: string; user: Partial<User> }> {
+    const em = this.userRepository.getEntityManager().fork();
 
     try {
       // Verificar si el usuario ya existe
       const existingUser = await em.getRepository(User).findOne({
-        $or: [{ email: data.email }, { dni: data.dni }],
+        $or: [{ email: data.email! }, { dni: data.dni! }],
       });
 
       if (existingUser) {
@@ -43,23 +42,26 @@ export class AuthService {
 
       // Hash de la contraseña
       const saltRounds = 10;
-      const hashedPassword = await bcrypt.hash(data.password, saltRounds);
+      const hashedPassword = await bcrypt.hash(data.password!, saltRounds);
 
       // Crear nuevo usuario
       const newUser = new User({
-        dni: data.dni,
-        nombre: data.nombre,
-        apellidos: data.apellido,
-        email: data.email,
+        dni: data.dni!,
+        nombre: data.nombre!,
+        apellidos: data.apellidos!,
+        email: data.email!,
         password: hashedPassword,
-        fechaNacimiento: data.fecha_nacimiento,
+        fechaNacimiento: data.fechaNacimiento,
         role: UserRole.USER,
       });
 
       em.persist(newUser);
       await em.flush();
 
-      return { message: "Usuario registrado correctamente." };
+      return {
+        message: "Usuario registrado correctamente.",
+        user: newUser.toJSON(),
+      };
     } catch (error) {
       throw error;
     }
@@ -68,10 +70,10 @@ export class AuthService {
   async login(
     data: LoginData
   ): Promise<{ token: string; user: Partial<User> }> {
-    const em = Database.getEM().fork();
+    const em = this.userRepository.getEntityManager().fork();
 
     try {
-      // Buscar usuario por email
+      // Buscar usuario por email (ya no necesitamos 'pool')
       const user = await em.getRepository(User).findOne({ email: data.email });
 
       if (!user) {
@@ -99,12 +101,9 @@ export class AuthService {
         expiresIn: "1h",
       });
 
-      // Retornar datos sin password
-      const { password, ...userWithoutPassword } = user;
-
       return {
         token,
-        user: userWithoutPassword,
+        user: user.toJSON(), // Usamos el helper toJSON()
       };
     } catch (error) {
       throw error;

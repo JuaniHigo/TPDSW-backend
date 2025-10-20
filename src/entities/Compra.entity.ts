@@ -10,6 +10,7 @@ import {
 } from "@mikro-orm/core";
 import { User } from "./User.entity";
 import { Entrada } from "./Entrada.entity";
+import { CompraRepository } from "../repositories/CompraRepository";
 
 export enum MetodoPago {
   MERCADOPAGO = "mercadopago",
@@ -24,7 +25,7 @@ export enum EstadoPago {
   CANCELADA = "cancelada",
 }
 
-@Entity({ tableName: "compras" })
+@Entity({ tableName: "compras", repository: () => CompraRepository })
 export class Compra {
   @PrimaryKey({ fieldName: "id_compra" })
   id!: number;

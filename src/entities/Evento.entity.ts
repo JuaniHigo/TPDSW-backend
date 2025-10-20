@@ -12,6 +12,7 @@ import { Club } from "./Club.entity";
 import { Estadio } from "./Estadio.entity";
 import { Entrada } from "./Entrada.entity";
 import { PrecioEventoSector } from "./PrecioEventoSector.entity";
+import { EventoRepository } from "../repositories/EventoRepository";
 
 export enum EstadoEvento {
   PROGRAMADO = "Programado",
@@ -20,7 +21,7 @@ export enum EstadoEvento {
   CANCELADO = "Cancelado",
 }
 
-@Entity({ tableName: "eventos" })
+@Entity({ tableName: "eventos", repository: () => EventoRepository })
 export class Evento {
   @PrimaryKey({ fieldName: "id_evento" })
   id!: number;

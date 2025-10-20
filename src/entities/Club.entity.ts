@@ -9,8 +9,9 @@ import {
 } from "@mikro-orm/core";
 import { Socio } from "./Socio.entity";
 import { Evento } from "./Evento.entity";
+import { ClubRepository } from "../repositories/ClubRepository";
 
-@Entity({ tableName: "clubes" })
+@Entity({ tableName: "clubes", repository: () => ClubRepository })
 export class Club {
   @PrimaryKey({ fieldName: "id_club" })
   id!: number;
@@ -52,7 +53,9 @@ export class Club {
 
   // Método helper para generar próximo número de socio
   async getProximoNumeroSocio(): Promise<string> {
-    const totalSocios = this.socios.length;
+    // Advertencia: this.socios.length solo funciona si la colección está cargada.
+    // Es más seguro llamar a un método del repositorio.
+    const totalSocios = this.socios.isInitialized() ? this.socios.length : 0;
     return `${this.prefijo}-${totalSocios + 1}`;
   }
 }

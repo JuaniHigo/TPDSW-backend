@@ -1,6 +1,7 @@
+// src/config/database.ts
 import { MikroORM, RequestContext } from "@mikro-orm/core";
 import { MySqlDriver } from "@mikro-orm/mysql";
-import config from "./mikro-orm.config";
+import config from "./mikro-orm.config"; // Importamos la configuración
 
 export class Database {
   private static orm: MikroORM<MySqlDriver>;
@@ -8,7 +9,16 @@ export class Database {
   static async connect(): Promise<MikroORM<MySqlDriver>> {
     try {
       this.orm = await MikroORM.init<MySqlDriver>(config);
-      console.log("Base de datos conectada");
+      console.log("Base de datos conectada (MikroORM)");
+
+      // Sincronizar esquema (SOLO PARA DESARROLLO)
+      // En producción, deberías usar migraciones.
+      if (process.env.NODE_ENV !== "production") {
+        const generator = this.orm.getSchemaGenerator();
+        await generator.updateSchema();
+        console.log("Esquema sincronizado");
+      }
+
       return this.orm;
     } catch (error) {
       console.error("Error de conexion a la base de datos", error);
@@ -19,14 +29,15 @@ export class Database {
   static getORM(): MikroORM<MySqlDriver> {
     if (!this.orm) {
       throw new Error(
-        "ORM no inicializado, llama a DATABASE.connect() primero"
+        "ORM no inicializado, llama a Database.connect() primero"
       );
     }
     return this.orm;
   }
 
   static getEM() {
-    return this.getORM().em;
+    // fork() es crucial para tener un Entity Manager por request
+    return this.getORM().em.fork();
   }
 
   static middleware() {

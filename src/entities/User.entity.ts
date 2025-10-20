@@ -1,13 +1,14 @@
 import { Entity, PrimaryKey, Property, Unique, OneToMany, Collection, Enum } from "@mikro-orm/core";
 import { Socio } from "./Socio.entity";
 import { Compra } from "./Compra.entity";
+import { UserRepository } from "../repositories/UserRepository";
 
 export enum UserRole {
     USER = 'user',
     ADMIN = 'admin',
 }
 
-@Entity({ tableName: "usuarios" })
+@Entity({ tableName: "usuarios", repository: () => UserRepository }) // <-- Añadir repo
 export class User {
     @PrimaryKey({fieldName: "id_usuario"})
     id!: number;
@@ -55,13 +56,13 @@ export class User {
 
 // Metodos Helper
     
-    get nombreCompleto():string{
-        return `${this.nombre}${this.apellido}`;
-    }
+   get nombreCompleto():string{
+        // Corregido: 'apellidos' en lugar de 'apellido'
+        return `${this.nombre} ${this.apellidos}`;
 
     toJSON(){
-        const o = {...this};
-        delete (o as any).password;
+        const o = wrap(this).toObject(); // Usar wrap() de MikroORM
+        delete o.password;
         return o;
     }
 }

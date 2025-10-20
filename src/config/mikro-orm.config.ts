@@ -1,26 +1,23 @@
-import { MikroORM } from "@mikro-orm/core";
+// src/config/mikro-orm.config.ts
+import { Options } from "@mikro-orm/core";
+import { MySqlDriver } from "@mikro-orm/mysql";
 import { SqlHighlighter } from "@mikro-orm/sql-highlighter";
+import { TsMorphMetadataProvider } from "@mikro-orm/reflection";
+import * as entities from "../entities"; // Importamos todas las entidades
 
-export const orm = await MikroORM.init({
-  entities: ["dist/**/*.entity.js"],
-  entitiesTs: ["src/**/*.entity.ts"],
-  dbName: "hc4gmo",
-  clientUrl: "mysql://dsw:dsw@localhost:3306/hc4gmo",
+const config: Options<MySqlDriver> = {
+  entities: Object.values(entities), // Usamos las entidades importadas
+  dbName: process.env.DB_NAME || "hc4gmo",
+  clientUrl: process.env.DB_URL || "mysql://dsw:dsw@localhost:3306/hc4gmo",
+  driver: MySqlDriver,
   highlighter: new SqlHighlighter(),
-  debug: true,
+  debug: process.env.NODE_ENV !== "production",
+  metadataProvider: TsMorphMetadataProvider,
   schemaGenerator: {
-    //never in production
     disableForeignKeys: true,
     createForeignKeyConstraints: true,
     ignoreSchema: [],
   },
-});
-
-export const syncSchema = async () => {
-  const generator = orm.getSchemaGenerator();
-  /*   
-  await generator.dropSchema()
-  await generator.createSchema()
-  */
-  await generator.updateSchema();
 };
+
+export default config;
