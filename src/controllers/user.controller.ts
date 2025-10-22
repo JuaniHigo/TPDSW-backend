@@ -1,8 +1,8 @@
 // src/controllers/user.controller.ts
 import { Request, Response } from "express";
-import { UserService } from "../services/UserService";
-import { NotFoundError } from "../utils/errors";
-import { parseIntOr } from "../utils/parser.utils";
+import { UserService } from "../services/UserService.js";
+import { NotFoundError } from "../utils/errors.js";
+import { parseIntOr } from "../utils/parser.utils.js";
 
 const userService = new UserService();
 

@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { crearPreferenciaMercadoPago, recibirConfirmacionPago, getEntradasPorCompra, procesarPagoTarjeta } from '../controllers/pagos.controller';
-import { isAuth } from '../middlewares/auth.middleware';
+import { crearPreferenciaMercadoPago, recibirConfirmacionPago, getEntradasPorCompra, procesarPagoTarjeta } from '../controllers/pagos.controller.js';
+import { isAuth } from '../middlewares/auth.middleware.js';
 
 const router = Router();
 

@@ -1,6 +1,6 @@
 // src/repositories/SocioRepository.ts
 import { EntityRepository } from "@mikro-orm/mysql";
-import { Socio } from "../entities/Socio.entity";
+import { Socio } from "../entities/Socio.entity.js";
 
 export class SocioRepository extends EntityRepository<Socio> {
   async findByUsuarioAndClub(
@@ -9,19 +9,19 @@ export class SocioRepository extends EntityRepository<Socio> {
   ): Promise<Socio | null> {
     return this.findOne(
       {
-        fkIdUsuario: usuarioId,
-        fkIdClub: clubId,
+        usuario: usuarioId,
+        club: clubId,
       },
       { populate: ["usuario", "club"] }
     );
   }
 
   async findByUsuario(usuarioId: number): Promise<Socio[]> {
-    return this.find({ fkIdUsuario: usuarioId }, { populate: ["club"] });
+    return this.find({ usuario: usuarioId }, { populate: ["club"] });
   }
 
   async findByClub(clubId: number): Promise<Socio[]> {
-    return this.find({ fkIdClub: clubId }, { populate: ["usuario"] });
+    return this.find({ club: clubId }, { populate: ["usuario"] });
   }
 
   async existsBetweenUserAndClub(
@@ -29,8 +29,8 @@ export class SocioRepository extends EntityRepository<Socio> {
     clubId: number
   ): Promise<boolean> {
     const count = await this.count({
-      fkIdUsuario: usuarioId,
-      fkIdClub: clubId,
+      usuario: usuarioId,
+      club: clubId,
     });
     return count > 0;
   }

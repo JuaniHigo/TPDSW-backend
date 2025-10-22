@@ -1,9 +1,9 @@
 // src/controllers/clubes.controller.ts
 import { Request, Response } from "express";
-import { ClubService } from "../services/ClubService";
-import { parseIntOr } from "../utils/parser.utils";
-import { NotFoundError } from "../utils/errors";
-import { Club } from "../entities/Club.entity"; // <-- Importa la Entidad
+import { ClubService } from "../services/ClubService.js";
+import { parseIntOr } from "../utils/parser.utils.js";
+import { NotFoundError } from "../utils/errors.js";
+import { Club } from "../entities/Club.entity.js"; // <-- Importa la Entidad
 
 const clubService = new ClubService();
 
@@ -15,7 +15,7 @@ export const getAllClubes = async (
     const page = parseIntOr(req.query.page, 1);
     const limit = parseIntOr(req.query.limit, 10);
 
-    const result = await clubService.getAllClubes(page, limit);
+    const result = await clubService.getAllClubs(page, limit);
     res.status(200).json(result);
   } catch (error: any) {
     res

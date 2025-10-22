@@ -1,13 +1,11 @@
 {
   "name": "tpdsw-backend",
   "type": "module",
-  "module": "es2022",
   "version": "1.0.0",
   "description": "Este repositorio tiene la finalidad de almacenar la parte correspondiente al back-end de nuestro proyecto",
-  "main": "index.js",
+  "main": "dist/app.js",
   "scripts": {
-    "dev": "nodemon src/app.ts",
-    "build": "tsc",
+    "dev": "nodemon --exec \"node --env-file=.env --loader ts-node/esm src/app.ts\"",
     "start": "node dist/app.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

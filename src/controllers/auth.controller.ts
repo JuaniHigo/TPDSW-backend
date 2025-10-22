@@ -1,7 +1,7 @@
 // src/controllers/auth.controller.ts
 import { Request, Response } from "express";
-import { AuthService } from "../services/AuthService";
-import { User } from "../entities/User.entity"; // <-- Importa la Entidad
+import { AuthService } from "../services/AuthService.js";
+import { User } from "../entities/User.entity.js"; // <-- Importa la Entidad
 
 const authService = new AuthService();
 

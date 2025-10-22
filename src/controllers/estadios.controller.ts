@@ -1,9 +1,9 @@
 // src/controllers/estadios.controller.ts
 import { Request, Response } from "express";
-import { EstadioService } from "../services/EstadioService";
-import { parseIntOr } from "../utils/parser.utils";
-import { NotFoundError } from "../utils/errors";
-import { Estadio } from "../entities/Estadio.entity"; // <-- Importa la Entidad
+import { EstadioService } from "../services/EstadioService.js";
+import { parseIntOr } from "../utils/parser.utils.js";
+import { NotFoundError } from "../utils/errors.js";
+import { Estadio } from "../entities/Estadio.entity.js"; // <-- Importa la Entidad
 
 const estadioService = new EstadioService();
 

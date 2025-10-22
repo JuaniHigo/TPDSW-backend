@@ -1,7 +1,7 @@
 // src/services/EventoService.ts
-import { Database } from "../config/database";
-import { Evento } from "../entities/Evento.entity";
-import { EventoRepository } from "../repositories/EventoRepository";
+import { Database } from "../config/database.js";
+import { Evento } from "../entities/Evento.entity.js";
+import { EventoRepository } from "../repositories/EventoRepository.js";
 import { EntityManager } from "@mikro-orm/mysql";
 
 export class EventoService {

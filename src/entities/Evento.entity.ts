@@ -8,11 +8,11 @@ import {
   Collection,
   Enum,
 } from "@mikro-orm/core";
-import { Club } from "./Club.entity";
-import { Estadio } from "./Estadio.entity";
-import { Entrada } from "./Entrada.entity";
-import { PrecioEventoSector } from "./PrecioEventoSector.entity";
-import { EventoRepository } from "../repositories/EventoRepository";
+import { Club } from "./Club.entity.js";
+import { Estadio } from "./Estadio.entity.js";
+import { Entrada } from "./Entrada.entity.js";
+import { PrecioEventoSector } from "./PrecioEventoSector.entity.js";
+import { EventoRepository } from "../repositories/EventoRepository.js";
 
 export enum EstadoEvento {
   PROGRAMADO = "Programado",
@@ -26,6 +26,9 @@ export class Evento {
   @PrimaryKey({ fieldName: "id_evento" })
   id!: number;
 
+  // --- INICIO DE CORRECCIÓN ---
+  // Borramos estas 3 propiedades. Son redundantes con las relaciones @ManyToOne.
+  /*
   @Property({ fieldName: "fk_id_club_local" })
   fkIdClubLocal!: number;
 
@@ -34,6 +37,8 @@ export class Evento {
 
   @Property({ fieldName: "fk_id_estadio" })
   fkIdEstadio!: number;
+  */
+  // --- FIN DE CORRECCIÓN ---
 
   @Property({ fieldName: "fecha_hora" })
   fechaHora!: Date;
@@ -41,8 +46,12 @@ export class Evento {
   @Property({ length: 100 })
   torneo!: string;
 
-  @Enum({ items: () => EstadoEvento, default: EstadoEvento.PROGRAMADO })
+  // --- CORRECCIÓN DE SINTAXIS ENUM ---
+  // @Enum va separado de @Property
+  @Enum(() => EstadoEvento)
+  @Property({ default: EstadoEvento.PROGRAMADO })
   estado: EstadoEvento = EstadoEvento.PROGRAMADO;
+  // --- FIN DE CORRECCIÓN ---
 
   @Property({ fieldName: "solo_publico_local", default: false })
   soloPublicoLocal: boolean = false;
@@ -57,7 +66,7 @@ export class Evento {
   })
   updatedAt: Date = new Date();
 
-  // Relaciones
+  // Relaciones (Estas son las definiciones correctas)
   @ManyToOne(() => Club, { fieldName: "fk_id_club_local" })
   clubLocal!: Club;
 
@@ -78,6 +87,11 @@ export class Evento {
   }
 
   get descripcion(): string {
-    return `${this.clubLocal.nombre} vs ${this.clubVisitante.nombre}`;
+    // Nota: Esto fallará si 'clubLocal' o 'clubVisitante' no están populados (cargados)
+    // Es mejor manejarlo en un DTO o 'wrapper'
+    if (this.clubLocal && this.clubVisitante) {
+      return `${this.clubLocal.nombre} vs ${this.clubVisitante.nombre}`;
+    }
+    return "Evento (detalles no cargados)";
   }
 }

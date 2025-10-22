@@ -1,4 +1,3 @@
-// src/entities/Compra.entity.ts
 import {
   Entity,
   PrimaryKey,
@@ -8,9 +7,9 @@ import {
   Collection,
   Enum,
 } from "@mikro-orm/core";
-import { User } from "./User.entity";
-import { Entrada } from "./Entrada.entity";
-import { CompraRepository } from "../repositories/CompraRepository";
+import { User } from "./User.entity.js";
+import { Entrada } from "./Entrada.entity.js";
+import { CompraRepository } from "../repositories/CompraRepository.js";
 
 export enum MetodoPago {
   MERCADOPAGO = "mercadopago",
@@ -41,11 +40,12 @@ export class Compra {
   })
   montoTotal!: number;
 
-  @Enum({ items: () => MetodoPago, fieldName: "metodo_pago" })
+  @Enum(() => MetodoPago)
+  @Property({ fieldName: "metodo_pago" })
   metodoPago!: MetodoPago;
 
-  @Enum({
-    items: () => EstadoPago,
+  @Enum(() => EstadoPago)
+  @Property({
     fieldName: "estado_pago",
     default: EstadoPago.PENDIENTE,
   })
@@ -68,8 +68,8 @@ export class Compra {
   updatedAt: Date = new Date();
 
   // Relaciones
-  @ManyToOne(() => User, { fieldName: "fk_id_usuario" })
-  usuario!: User;
+  @ManyToOne({ entity: () => User })
+  usuario!: any;
 
   @OneToMany(() => Entrada, (entrada) => entrada.compra)
   entradas = new Collection<Entrada>(this);

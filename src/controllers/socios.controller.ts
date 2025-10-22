@@ -1,9 +1,9 @@
 // src/controllers/socios.controller.ts
 import { Request, Response } from "express";
-import { SocioService } from "../services/SocioService";
-import { parseIntOr } from "../utils/parser.utils";
-import { NotFoundError } from "../utils/errors";
-import { Socio } from "../entities/Socio.entity"; // <-- Importa la Entidad
+import { SocioService } from "../services/SocioService.js";
+import { parseIntOr } from "../utils/parser.utils.js";
+import { NotFoundError } from "../utils/errors.js";
+import { Socio } from "../entities/Socio.entity.js"; // <-- Importa la Entidad
 
 const socioService = new SocioService();
 

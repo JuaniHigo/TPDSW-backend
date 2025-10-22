@@ -1,8 +1,8 @@
 // src/controllers/tipoEntrada.controller.ts
 import { Request, Response } from "express";
-import { TipoEntradaService } from "../services/TipoEntradaService";
-import { NotFoundError } from "../utils/errors";
-import { TipoEntrada } from "../entities/TipoEntrada.entity"; // <-- Importa la Entidad
+import { TipoEntradaService } from "../services/TipoEntradaService.js";
+import { NotFoundError } from "../utils/errors.js";
+import { TipoEntrada } from "../entities/TipoEntrada.entity.js"; // <-- Importa la Entidad
 
 const tipoEntradaService = new TipoEntradaService();
 

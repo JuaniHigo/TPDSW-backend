@@ -1,7 +1,7 @@
 // src/config/database.ts
 import { MikroORM, RequestContext } from "@mikro-orm/core";
 import { MySqlDriver } from "@mikro-orm/mysql";
-import config from "./mikro-orm.config"; // Importamos la configuración
+import config from "./mikro-orm.config.js"; // Importamos la configuración
 
 export class Database {
   private static orm: MikroORM<MySqlDriver>;
@@ -20,12 +20,14 @@ export class Database {
       }
 
       return this.orm;
-    } catch (error) {
-      console.error("Error de conexion a la base de datos", error);
-      throw error;
-    }
+    } catch (error: any) { // <-- Añade ': any'
+  // Esto nos mostrará el mensaje de error REAL
+  console.error("⛔ ¡Error al inicializar la Base de Datos! ⛔");
+  console.error("Mensaje:", error.message);
+  console.error("Stack:", error.stack);
+  process.exit(1); // Detiene la app si la BD no conecta
+}
   }
-
   static getORM(): MikroORM<MySqlDriver> {
     if (!this.orm) {
       throw new Error(

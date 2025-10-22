@@ -5,7 +5,7 @@ import {
   createTipoEntrada,
   updateTipoEntrada,
   deleteTipoEntrada
-} from '../controllers/tipoEntrada.controller';
+} from '../controllers/tipoEntrada.controller.js';
 
 const router = Router();
 

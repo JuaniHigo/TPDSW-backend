@@ -1,6 +1,6 @@
 // src/repositories/UserRepository.ts
 import { EntityRepository } from "@mikro-orm/mysql";
-import { User } from "../entities/User.entity";
+import { User } from "../entities/User.entity.js";
 
 export class UserRepository extends EntityRepository<User> {
   async findByEmail(email: string): Promise<User | null> {

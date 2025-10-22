@@ -1,13 +1,13 @@
 import { Router } from 'express';
-import { isAuth } from '../middlewares/auth.middleware';
-import { isAdmin } from '../middlewares/isAdmin.middleware';
+import { isAuth } from '../middlewares/auth.middleware.js';
+import { isAdmin } from '../middlewares/isAdmin.middleware.js';
 import {
     getAllClubes,
     getClubById,
     createClub,
     updateClub,
     deleteClub
-} from '../controllers/clubes.controller';
+} from '../controllers/clubes.controller.js';
 
 const router = Router();
 

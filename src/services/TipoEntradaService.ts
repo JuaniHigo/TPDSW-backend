@@ -1,15 +1,16 @@
 // src/services/TipoEntradaService.ts
 import { EntityManager, wrap } from "@mikro-orm/core";
-import { Database } from "../config/database";
-import { TipoEntrada } from "../entities/TipoEntrada.entity";
-import { NotFoundError } from "../utils/errors";
+import { Database } from "../config/database.js";
+import { TipoEntrada } from "../entities/TipoEntrada.entity.js";
+import { NotFoundError } from "../utils/errors.js";
 
 export class TipoEntradaService {
   private em: EntityManager;
-  private tipoEntradaRepository = this.em.getRepository(TipoEntrada);
+  private tipoEntradaRepository; 
 
   constructor() {
     this.em = Database.getEM();
+    this.tipoEntradaRepository = this.em.getRepository(TipoEntrada);
   }
 
   async getAllTipoEntradas(): Promise<TipoEntrada[]> {

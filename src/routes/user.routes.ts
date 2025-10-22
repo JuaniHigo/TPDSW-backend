@@ -7,8 +7,8 @@ import {
     getUserById, 
     updateUser, 
     deleteUser 
-} from '../controllers/user.controller';
-import { isAuth } from '../middlewares/auth.middleware';
+} from '../controllers/user.controller.js';
+import { isAuth } from '../middlewares/auth.middleware.js';
 
 const router = Router();
 router.get('/', isAuth, getAllUsers);

@@ -1,6 +1,6 @@
 //src/repositories/EventoRepository.ts
 import { EntityRepository, QueryOrderMap } from "@mikro-orm/mysql";
-import { Evento, EstadoEvento } from "../entities/Evento.entity";
+import { Evento, EstadoEvento } from "../entities/Evento.entity.js";
 
 export class EventoRepository extends EntityRepository<Evento> {
   async findWithDetails(id: number): Promise<Evento | null> {
@@ -19,7 +19,7 @@ export class EventoRepository extends EntityRepository<Evento> {
       {},
       {
         populate: ["clubLocal", "clubVisitante", "estadio"],
-        orderBy: { fechaHora: QueryOrder.DESC },
+        orderBy: { fechaHora: "DESC" },
         limit,
         offset,
       }
@@ -46,7 +46,7 @@ export class EventoRepository extends EntityRepository<Evento> {
   async findByClub(clubId: number): Promise<Evento[]> {
     return this.find(
       {
-        $or: [{ fkIdClubLocal: clubId }, { fkIdClubVisitante: clubId }],
+        $or: [{ clubLocal: clubId }, { clubVisitante: clubId }],
       },
       { populate: ["clubLocal", "clubVisitante", "estadio"] }
     );

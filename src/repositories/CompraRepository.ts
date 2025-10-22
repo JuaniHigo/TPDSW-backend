@@ -1,6 +1,6 @@
 // src/repositories/CompraRepository.ts
 import { EntityRepository } from "@mikro-orm/mysql";
-import { Compra, EstadoPago } from "../entities/Compra.entity";
+import { Compra, EstadoPago } from "../entities/Compra.entity.js";
 
 export class CompraRepository extends EntityRepository<Compra> {
   async findByUsuario(usuarioId: number): Promise<Compra[]> {

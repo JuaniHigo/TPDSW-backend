@@ -1,22 +1,39 @@
+// --- LÍNEA 1: EL ATRAPADOR GLOBAL DEBE ESTAR AQUÍ ---
+process.on('uncaughtException', (err, origin) => {
+  console.error('!!!!!!!!!! EXCEPCIÓN GLOBAL NO ATRAPADA !!!!!!!!!!!');
+  console.error('Origen:', origin);
+  
+  if (err instanceof Error) {
+    console.error('Error:', err.message);
+    console.error('Stack:', err.stack);
+  } else {
+    // Esto imprimirá el [Object: null prototype]
+    console.error('Error (Objeto Desconocido):', err);
+  }
+  console.error('!!!!!!!!!! FINAL DE EXCEPCIÓN !!!!!!!!!!!');
+  process.exit(1); // Detiene la app
+});
+// --- FIN DEL ATRAPADOR ---
+
+
+// Ahora, el resto de tu app...
 import "reflect-metadata";
 import express, { Application } from "express";
-import dotenv from "dotenv";
+
 import cors from "cors";
 import compression from "compression";
-import { Database } from "./config/database"; // <-- Importamos la clase
+import { Database } from "./config/database.js"; // <-- Importamos la clase
 
 // Importación de todas las rutas
-import userRoutes from "./routes/user.routes";
-import sociosRoutes from "./routes/socios.routes";
-import clubesRoutes from "./routes/clubes.routes";
-import estadiosRoutes from "./routes/estadios.routes";
-import eventosRoutes from "./routes/eventos.routes";
-import authRoutes from "./routes/auth.routes";
-import tipoEntradaRoutes from "./routes/tipoEntrada.routes";
-import sectoresRoutes from "./routes/sectores.routes";
-import pagoRoutes from "./routes/pago.routes";
-
-dotenv.config();
+import userRoutes from "./routes/user.routes.js";
+import sociosRoutes from "./routes/socios.routes.js";
+import clubesRoutes from "./routes/clubes.routes.js";
+import estadiosRoutes from "./routes/estadios.routes.js";
+import eventosRoutes from "./routes/eventos.routes.js";
+import authRoutes from "./routes/auth.routes.js";
+import tipoEntradaRoutes from "./routes/tipoEntrada.routes.js";
+import sectoresRoutes from "./routes/sectores.routes.js";
+import pagoRoutes from "./routes/pago.routes.js";
 
 const app: Application = express();
 const PORT = process.env.PORT || 3000;
@@ -48,4 +65,16 @@ app.use(express.json());
   app.listen(PORT, () => {
     console.log(`Servidor corriendo en el puerto ${PORT}`);
   });
-})();
+})().catch((error) => {
+  // Capturamos cualquier error fatal durante el inicio
+  console.error("⛔ ¡Error fatal al iniciar la aplicación! ⛔");
+
+  if (error instanceof Error) {
+    console.error("Mensaje:", error.message);
+    console.error("Stack:", error.stack);
+  } else {
+    console.error("Se lanzó un objeto de error desconocido:", error);
+  }
+
+  process.exit(1); // Detiene la aplicación
+});

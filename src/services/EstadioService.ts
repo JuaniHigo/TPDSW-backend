@@ -1,8 +1,8 @@
 // src/services/EstadioService.ts
 import { EntityManager, wrap } from "@mikro-orm/core";
-import { Database } from "../config/database";
-import { Estadio } from "../entities/Estadio.entity";
-import { NotFoundError } from "../utils/errors";
+import { Database } from "../config/database.js";
+import { Estadio } from "../entities/Estadio.entity.js";
+import { NotFoundError } from "../utils/errors.js";
 
 interface PaginationResult<T> {
   data: T[];
@@ -16,10 +16,13 @@ interface PaginationResult<T> {
 
 export class EstadioService {
   private em: EntityManager;
-  private estadioRepository = this.em.getRepository(Estadio);
+  // 1. Declara la propiedad aquí, pero NO la inicialices.
+  private estadioRepository;
 
   constructor() {
     this.em = Database.getEM();
+    // 2. Inicialízala AQUÍ, ahora que 'this.em' ya tiene un valor.
+    this.estadioRepository = this.em.getRepository(Estadio);
   }
 
   async getAllEstadios(

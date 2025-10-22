@@ -1,9 +1,10 @@
 // src/services/AuthService.ts
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { Database } from "../config/database";
-import { User, UserRole } from "../entities/User.entity";
-import { UserRepository } from "../repositories/UserRepository";
+import { Database } from "../config/database.js";
+import { User, UserRole } from "../entities/User.entity.js";
+import { UserRepository } from "../repositories/UserRepository.js";
+import { wrap, EntityDTO } from "@mikro-orm/core"; // Importación corregida
 
 // Usamos Partial<User> en lugar de la interfaz
 interface RegisterData extends Partial<User> {
@@ -27,7 +28,7 @@ export class AuthService {
 
   async register(
     data: RegisterData
-  ): Promise<{ message: string; user: Partial<User> }> {
+  ): Promise<{ message: string; user: EntityDTO<User> }> { // <-- TIPO CORREGIDO
     const em = this.userRepository.getEntityManager().fork();
 
     try {
@@ -60,7 +61,8 @@ export class AuthService {
 
       return {
         message: "Usuario registrado correctamente.",
-        user: newUser.toJSON(),
+        // CORREGIDO: Usamos la instancia 'newUser' y la propiedad 'user'
+        user: wrap(newUser).toObject(), 
       };
     } catch (error) {
       throw error;
@@ -69,7 +71,7 @@ export class AuthService {
 
   async login(
     data: LoginData
-  ): Promise<{ token: string; user: Partial<User> }> {
+  ): Promise<{ token: string; user: EntityDTO<User> }> { // <-- TIPO CORREGIDO
     const em = this.userRepository.getEntityManager().fork();
 
     try {
@@ -103,7 +105,8 @@ export class AuthService {
 
       return {
         token,
-        user: user.toJSON(), // Usamos el helper toJSON()
+        // CORREGIDO: Usamos la instancia 'user' que encontramos
+        user: wrap(user).toObject(), 
       };
     } catch (error) {
       throw error;

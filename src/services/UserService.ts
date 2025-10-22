@@ -1,9 +1,9 @@
 // src/services/UserService.ts
 import { EntityManager, wrap } from "@mikro-orm/core";
-import { Database } from "../config/database";
-import { User } from "../entities/User.entity";
-import { UserRepository } from "../repositories/UserRepository";
-import { NotFoundError } from "../utils/errors"; // (Deberías crear un archivo de errores)
+import { Database } from "../config/database.js";
+import { User } from "../entities/User.entity.js";
+import { UserRepository } from "../repositories/UserRepository.js";
+import { NotFoundError } from "../utils/errors.js"; // (Deberías crear un archivo de errores)
 
 export class UserService {
   private em: EntityManager;

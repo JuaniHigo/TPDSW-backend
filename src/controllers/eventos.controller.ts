@@ -1,13 +1,7 @@
 // src/controllers/eventos.controller.ts
 import { Request, Response } from "express";
-import { EventoService } from "../services/EventoService"; // <-- Importamos el servicio
-import { parseIntOr } from "./utils/parser.utils";
-
-// Helper simple (puedes ponerlo en src/utils/parser.utils.ts)
-const parseIntOr = (value: any, defaultValue: number): number => {
-  const parsed = parseInt(value, 10);
-  return isNaN(parsed) ? defaultValue : parsed;
-};
+import { EventoService } from "../services/EventoService.js"; // <-- Importamos el servicio
+import { parseIntOr } from "../utils/parser.utils.js";
 
 const eventoService = new EventoService();
 

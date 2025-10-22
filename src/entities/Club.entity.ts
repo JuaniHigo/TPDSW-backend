@@ -7,9 +7,9 @@ import {
   OneToMany,
   Collection,
 } from "@mikro-orm/core";
-import { Socio } from "./Socio.entity";
-import { Evento } from "./Evento.entity";
-import { ClubRepository } from "../repositories/ClubRepository";
+import { Socio } from "./Socio.entity.js";
+import { Evento } from "./Evento.entity.js";
+import { ClubRepository } from "../repositories/ClubRepository.js";
 
 @Entity({ tableName: "clubes", repository: () => ClubRepository })
 export class Club {

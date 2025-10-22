@@ -1,68 +1,71 @@
-import { Entity, PrimaryKey, Property, Unique, OneToMany, Collection, Enum } from "@mikro-orm/core";
-import { Socio } from "./Socio.entity";
-import { Compra } from "./Compra.entity";
-import { UserRepository } from "../repositories/UserRepository";
+import {
+  Entity,
+  PrimaryKey,
+  Property,
+  Unique,
+  OneToMany,
+  Collection,
+  Enum,
+} from "@mikro-orm/core";
+import { Socio } from "./Socio.entity.js";
+import { Compra } from "./Compra.entity.js";
+import { UserRepository } from "../repositories/UserRepository.js";
 
 export enum UserRole {
-    USER = 'user',
-    ADMIN = 'admin',
+  USER = "user",
+  ADMIN = "admin",
 }
 
-@Entity({ tableName: "usuarios", repository: () => UserRepository }) // <-- Añadir repo
+@Entity({ tableName: "usuarios", repository: () => UserRepository })
 export class User {
-    @PrimaryKey({fieldName: "id_usuario"})
-    id!: number;
+  @PrimaryKey({ fieldName: "id_usuario" })
+  id!: number;
 
-    @Property({length:8})
-    @Unique()
-    dni!: string;
+  @Property({ length: 8 })
+  @Unique()
+  dni!: string;
 
-    @Property({length: 100})
-    nombre!: string;    
+  @Property({ length: 100 })
+  nombre!: string;
 
-    @Property({length: 100})
-    apellidos!: string; 
+  @Property({ length: 100 })
+  apellidos!: string;
 
-    @Property({ length: 150 })
-    @Unique()
-    email!: string;
+  @Property({ length: 150 })
+  @Unique()
+  email!: string;
 
-    @Property({ length: 255, hidden: true }) // hidden evita que se incluya en serialización JSON
-    password!: string;
+  @Property({ length: 255, hidden: true })
+  password!: string;
 
-    fechaNacimiento?: Date;
-    @Property({ fieldName: 'fecha_nacimiento', nullable: true })
+  @Property({ fieldName: "fecha_nacimiento", nullable: true })
+  fechaNacimiento?: Date;
 
-    @Enum(items: () => UserRole, default: UserRole.USER)
-    role: UserRole = UserRole.USER;
+  @Enum(() => UserRole)
+  role: UserRole = UserRole.USER;
 
-    @Property({fieldName: "fecha_creacion", defaultRaw: 'CURRENT_TIMESTAMP'})
-    fechaCreacion: Date=new Date();
-    
-    @Property({fieldName: "fecha_actualizacion", defaultRaw: 'CURRENT_TIMESTAMP', onUpdate:()=>new Date()})
-    fechaActualizacion: Date=new Date();
+  @Property({ fieldName: "fecha_creacion", defaultRaw: "CURRENT_TIMESTAMP" })
+  fechaCreacion: Date = new Date();
 
-//relaciones
+  @Property({
+    fieldName: "fecha_actualizacion",
+    defaultRaw: "CURRENT_TIMESTAMP",
+    onUpdate: () => new Date(),
+  })
+  fechaActualizacion: Date = new Date();
 
-    @OneToMany(()=>Socio, socio=>socio.usuario)
-    socios = new Collection<Socio>(this);
+  // Relaciones
+  @OneToMany(() => Socio, (socio) => socio.usuario)
+  socios = new Collection<Socio>(this);
 
-    @OneToMany(() => Compra, compra => compra.usuario)
-    compras = new Collection<Compra>(this);
+  @OneToMany(() => Compra, (compra) => compra.usuario)
+  compras = new Collection<Compra>(this);
 
-    constructor(data: Partial<User>={}){
-        Object.assign(this, data);
-    }
+  constructor(data: Partial<User> = {}) {
+    Object.assign(this, data);
+  }
 
-// Metodos Helper
-    
-   get nombreCompleto():string{
-        // Corregido: 'apellidos' en lugar de 'apellido'
-        return `${this.nombre} ${this.apellidos}`;
-
-    toJSON(){
-        const o = wrap(this).toObject(); // Usar wrap() de MikroORM
-        delete o.password;
-        return o;
-    }
+  get nombreCompleto(): string {
+    return `${this.nombre} ${this.apellidos}`;
+  }
 }

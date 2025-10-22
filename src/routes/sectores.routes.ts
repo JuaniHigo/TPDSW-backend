@@ -5,7 +5,7 @@ import {
     createSector,
     updateSector,
     deleteSector
-} from '../controllers/sectores.controller';
+} from '../controllers/sectores.controller.js';
 
 const router = Router();
 

@@ -1,8 +1,8 @@
 // src/controllers/pagos.controller.ts
 import { Request, Response } from "express";
-import { PaymentService } from "../services/PaymentService"; // <-- Importa el servicio
-import { NotFoundError } from "../utils/errors";
-import { parseIntOr } from "../utils/parser.utils";
+import { PaymentService } from "../services/PaymentService.js"; // <-- Importa el servicio
+import { NotFoundError } from "../utils/errors.js";
+import { parseIntOr } from "../utils/parser.utils.js";
 
 const paymentService = new PaymentService();
 

@@ -1,13 +1,13 @@
 // src/services/SocioService.ts
 import { EntityManager, wrap } from "@mikro-orm/core";
-import { Database } from "../config/database";
-import { Socio } from "../entities/Socio.entity";
-import { SocioRepository } from "../repositories/SocioRepository";
-import { UserRepository } from "../repositories/UserRepository";
-import { ClubRepository } from "../repositories/ClubRepository";
-import { User } from "../entities/User.entity";
-import { Club } from "../entities/Club.entity";
-import { NotFoundError } from "../utils/errors";
+import { Database } from "../config/database.js";
+import { Socio } from "../entities/Socio.entity.js";
+import { SocioRepository } from "../repositories/SocioRepository.js";
+import { UserRepository } from "../repositories/UserRepository.js";
+import { ClubRepository } from "../repositories/ClubRepository.js";
+import { User } from "../entities/User.entity.js";
+import { Club } from "../entities/Club.entity.js";
+import { NotFoundError } from "../utils/errors.js";
 
 interface PaginationResult<T> {
   data: T[];

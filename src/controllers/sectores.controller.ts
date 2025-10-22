@@ -1,9 +1,16 @@
 // src/controllers/sectores.controller.ts
 import { Request, Response } from "express";
-import { SectorService } from "../services/SectorService";
-import { parseIntOr } from "../utils/parser.utils";
-import { NotFoundError } from "../utils/errors";
-import { Sector } from "../entities/Sector.entity"; // <-- Importa la Entidad
+import { SectorService } from "../services/SectorService.js";
+import { parseIntOr } from "../utils/parser.utils.js";
+import { NotFoundError } from "../utils/errors.js";
+// import { Sector } from "../entities/Sector.entity.js"; // <-- Ya no es necesario
+
+// --- CORRECCIÓN ---
+// Importamos las interfaces que el Servicio espera
+import {
+  CreateSectorData,
+  UpdateSectorData,
+} from "../services/SectorService.js";
 
 const sectorService = new SectorService();
 
@@ -50,7 +57,10 @@ export const createSector = async (
   res: Response
 ): Promise<void> => {
   try {
-    const newSector = await sectorService.createSector(req.body as Sector);
+    // --- CORRECCIÓN ---
+    // Le decimos que req.body es del tipo 'CreateSectorData'
+    const data: CreateSectorData = req.body;
+    const newSector = await sectorService.createSector(data);
     res.status(201).json(newSector);
   } catch (error: any) {
     if (error instanceof NotFoundError) {
@@ -69,17 +79,18 @@ export const updateSector = async (
 ): Promise<void> => {
   const { id_sector, fk_id_estadio } = req.params;
   try {
+    // --- CORRECCIÓN ---
+    // Le decimos que req.body es del tipo 'UpdateSectorData'
+    const data: UpdateSectorData = req.body;
     const updatedSector = await sectorService.updateSector(
       Number(id_sector),
       Number(fk_id_estadio),
-      req.body as Partial<Sector>
+      data // Ahora 'data' tiene el tipo correcto
     );
-    res
-      .status(200)
-      .json({
-        message: "Sector actualizado correctamente",
-        sector: updatedSector,
-      });
+    res.status(200).json({
+      message: "Sector actualizado correctamente",
+      sector: updatedSector,
+    });
   } catch (error: any) {
     if (error instanceof NotFoundError) {
       res.status(404).json({ message: error.message });

@@ -6,8 +6,8 @@ import {
   OneToMany,
   Collection,
 } from "@mikro-orm/core";
-import { Evento } from "./Evento.entity";
-import { Sector } from "./Sector.entity";
+import { Evento } from "./Evento.entity.js";
+import { Sector } from "./Sector.entity.js";
 
 @Entity({ tableName: "estadios" })
 export class Estadio {

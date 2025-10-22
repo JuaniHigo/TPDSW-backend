@@ -1,13 +1,13 @@
 import { Router } from 'express';
-import { isAuth } from '../middlewares/auth.middleware';
-import { isAdmin } from '../middlewares/isAdmin.middleware';
+import { isAuth } from '../middlewares/auth.middleware.js';
+import { isAdmin } from '../middlewares/isAdmin.middleware.js';
 import {
     getAllEventos,
     getEventoById,
     createEvento,
     updateEvento,
     deleteEvento
-} from '../controllers/eventos.controller';
+} from '../controllers/eventos.controller.js';
 
 const router = Router();
 

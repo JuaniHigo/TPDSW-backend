@@ -1,13 +1,13 @@
 import { Router } from 'express';
 // Importamos las funciones del controlador de socios
-import { isAuth } from '../middlewares/auth.middleware';
+import { isAuth } from '../middlewares/auth.middleware.js';
 import { 
     createSocio, 
     getAllSocios, 
     getSocioById, 
     updateSocio, 
     deleteSocio 
-} from '../controllers/socios.controller';
+} from '../controllers/socios.controller.js';
 
 const router = Router();
 
