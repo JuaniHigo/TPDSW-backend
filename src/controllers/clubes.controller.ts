@@ -3,7 +3,7 @@ import { Request, Response } from "express";
 import { ClubService } from "../services/ClubService.js";
 import { parseIntOr } from "../utils/parser.utils.js";
 import { NotFoundError } from "../utils/errors.js";
-import { Club } from "../entities/Club.entity.js"; // <-- Importa la Entidad
+import { Club } from "../entities/Club.entity.js";
 
 const clubService = new ClubService();
 

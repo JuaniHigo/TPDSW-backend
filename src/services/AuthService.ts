@@ -4,23 +4,14 @@ import jwt from "jsonwebtoken";
 import { Database } from "../config/database.js";
 import { User, UserRole } from "../entities/User.entity.js";
 import { UserRepository } from "../repositories/UserRepository.js";
-import { wrap, EntityDTO } from "@mikro-orm/core"; // Importación corregida
+import { wrap, EntityDTO } from "@mikro-orm/core"; // <-- Importa wrap y EntityDTO
 
-// Usamos Partial<User> en lugar de la interfaz
-interface RegisterData extends Partial<User> {
-  password_confirmation?: string; // (si tuvieras)
-}
-
-interface LoginData {
-  email: string;
-  password: string;
-}
+// ... (interfaces RegisterData, LoginData)
 
 export class AuthService {
   private userRepository: UserRepository;
 
   constructor() {
-    // Obtenemos el EM del contexto de la request
     this.userRepository = Database.getEM().getRepository(
       User
     ) as UserRepository;
@@ -28,25 +19,25 @@ export class AuthService {
 
   async register(
     data: RegisterData
-  ): Promise<{ message: string; user: EntityDTO<User> }> { // <-- TIPO CORREGIDO
+  ): Promise<{ message: string; user: EntityDTO<User> }> {
+    // <-- Usa EntityDTO
     const em = this.userRepository.getEntityManager().fork();
 
     try {
-      // Verificar si el usuario ya existe
+      // ... (verificación de usuario existente) ...
       const existingUser = await em.getRepository(User).findOne({
         $or: [{ email: data.email! }, { dni: data.dni! }],
       });
-
       if (existingUser) {
         throw new Error("Usuario ya existe con ese email o DNI");
       }
 
-      // Hash de la contraseña
+      // ... (hash de contraseña) ...
       const saltRounds = 10;
       const hashedPassword = await bcrypt.hash(data.password!, saltRounds);
 
-      // Crear nuevo usuario
       const newUser = new User({
+        // Crea la entidad
         dni: data.dni!,
         nombre: data.nombre!,
         apellidos: data.apellidos!,
@@ -61,8 +52,7 @@ export class AuthService {
 
       return {
         message: "Usuario registrado correctamente.",
-        // CORREGIDO: Usamos la instancia 'newUser' y la propiedad 'user'
-        user: wrap(newUser).toObject(), 
+        user: wrap(newUser).toObject(), // <-- Usa wrap().toObject()
       };
     } catch (error) {
       throw error;
@@ -71,48 +61,43 @@ export class AuthService {
 
   async login(
     data: LoginData
-  ): Promise<{ token: string; user: EntityDTO<User> }> { // <-- TIPO CORREGIDO
+  ): Promise<{ token: string; user: EntityDTO<User> }> {
+    // <-- Usa EntityDTO
     const em = this.userRepository.getEntityManager().fork();
 
     try {
-      // Buscar usuario por email (ya no necesitamos 'pool')
       const user = await em.getRepository(User).findOne({ email: data.email });
-
       if (!user) {
         throw new Error("Credenciales inválidas.");
       }
 
-      // Verificar contraseña
       const isPasswordValid = await bcrypt.compare(
         data.password,
         user.password
       );
-
       if (!isPasswordValid) {
         throw new Error("Credenciales inválidas.");
       }
 
-      // Generar token JWT
       const payload = {
         id_usuario: user.id,
         email: user.email,
         rol: user.role,
       };
-
       const token = jwt.sign(payload, process.env.JWT_SECRET as string, {
         expiresIn: "1h",
       });
 
       return {
         token,
-        // CORREGIDO: Usamos la instancia 'user' que encontramos
-        user: wrap(user).toObject(), 
+        user: wrap(user).toObject(), // <-- Usa wrap().toObject()
       };
     } catch (error) {
       throw error;
     }
   }
 
+  // ... (verifyToken se mantiene igual) ...
   async verifyToken(token: string): Promise<User | null> {
     try {
       const decoded = jwt.verify(

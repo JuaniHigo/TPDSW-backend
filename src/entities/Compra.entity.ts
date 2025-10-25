@@ -1,3 +1,4 @@
+// src/entities/Compra.entity.ts
 import {
   Entity,
   PrimaryKey,
@@ -5,7 +6,7 @@ import {
   ManyToOne,
   OneToMany,
   Collection,
-  Enum,
+  Enum, // No hace falta wrap aquí
 } from "@mikro-orm/core";
 import { User } from "./User.entity.js";
 import { Entrada } from "./Entrada.entity.js";
@@ -29,8 +30,9 @@ export class Compra {
   @PrimaryKey({ fieldName: "id_compra" })
   id!: number;
 
-  @Property({ fieldName: "fk_id_usuario" })
-  fkIdUsuario!: number;
+  // --- Propiedad FK eliminada ---
+  // @Property({ fieldName: "fk_id_usuario" }) // <-- Se elimina
+  // fkIdUsuario!: number;
 
   @Property({
     fieldName: "monto_total",
@@ -38,17 +40,14 @@ export class Compra {
     precision: 10,
     scale: 2,
   })
-  montoTotal!: number;
+  montoTotal!: number; // Asegúrate que sea number en TypeScript
 
-  @Enum(() => MetodoPago)
-  @Property({ fieldName: "metodo_pago" })
+  @Enum(() => MetodoPago) // Correcto
+  @Property({ fieldName: "metodo_pago" }) // Correcto
   metodoPago!: MetodoPago;
 
-  @Enum(() => EstadoPago)
-  @Property({
-    fieldName: "estado_pago",
-    default: EstadoPago.PENDIENTE,
-  })
+  @Enum(() => EstadoPago) // Correcto
+  @Property({ fieldName: "estado_pago", default: EstadoPago.PENDIENTE }) // Correcto
   estadoPago: EstadoPago = EstadoPago.PENDIENTE;
 
   @Property({ fieldName: "id_preferencia_mp", nullable: true })
@@ -68,8 +67,12 @@ export class Compra {
   updatedAt: Date = new Date();
 
   // Relaciones
-  @ManyToOne({ entity: () => User })
-  usuario!: any;
+  @ManyToOne({
+    entity: () => User,
+    fieldName: "fk_id_usuario",
+    onDelete: "cascade",
+  }) // <-- Corregido
+  usuario!: User; // Debe ser tipo User
 
   @OneToMany(() => Entrada, (entrada) => entrada.compra)
   entradas = new Collection<Entrada>(this);

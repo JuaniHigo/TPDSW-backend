@@ -3,8 +3,12 @@ import { Options } from "@mikro-orm/core";
 import { MySqlDriver } from "@mikro-orm/mysql";
 import { SqlHighlighter } from "@mikro-orm/sql-highlighter";
 import { TsMorphMetadataProvider } from "@mikro-orm/reflection";
+import dotenv from "dotenv"; // Importa dotenv
 
-// Importamos las entidades (como hicimos antes)
+// Carga las variables de entorno ANTES de usarlas
+dotenv.config();
+
+// Importamos las entidades (ASEGÚRATE DE QUE LOS ARCHIVOS EXISTAN Y TENGAN .js)
 import { User } from "../entities/User.entity.js";
 import { Socio } from "../entities/Socio.entity.js";
 import { Club } from "../entities/Club.entity.js";
@@ -14,6 +18,7 @@ import { Evento } from "../entities/Evento.entity.js";
 import { Sector } from "../entities/Sector.entity.js";
 import { Entrada } from "../entities/Entrada.entity.js";
 import { PrecioEventoSector } from "../entities/PrecioEventoSector.entity.js";
+import { TipoEntrada } from "../entities/TipoEntrada.entity.js"; // Faltaba esta
 
 // --- INICIO DE CORRECCIÓN ---
 // Cargamos las variables del .env
@@ -36,6 +41,7 @@ const dbUrl = `mysql://${dbUser}:${dbPassword}@${dbHost}:${dbPort}/${dbName}`;
 
 const config: Options<MySqlDriver> = {
   entities: [
+    // Lista explícita de entidades
     User,
     Socio,
     Club,
@@ -45,6 +51,7 @@ const config: Options<MySqlDriver> = {
     Sector,
     Entrada,
     PrecioEventoSector,
+    TipoEntrada, // Faltaba esta
   ],
   dbName: dbName, // Usamos la variable verificada
   clientUrl: dbUrl, // Usamos la URL construida
@@ -57,6 +64,8 @@ const config: Options<MySqlDriver> = {
     createForeignKeyConstraints: true,
     ignoreSchema: [],
   },
+  // Añade esto si no usas migraciones y quieres que se creen las tablas
+  allowGlobalContext: true,
 };
 
 export default config;

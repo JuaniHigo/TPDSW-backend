@@ -3,7 +3,7 @@ import { Request, Response } from "express";
 import { EstadioService } from "../services/EstadioService.js";
 import { parseIntOr } from "../utils/parser.utils.js";
 import { NotFoundError } from "../utils/errors.js";
-import { Estadio } from "../entities/Estadio.entity.js"; // <-- Importa la Entidad
+import { Estadio } from "../entities/Estadio.entity.js";
 
 const estadioService = new EstadioService();
 
@@ -69,12 +69,10 @@ export const updateEstadio = async (
       Number(id),
       req.body as Partial<Estadio>
     );
-    res
-      .status(200)
-      .json({
-        message: "Estadio actualizado correctamente",
-        estadio: updatedEstadio,
-      });
+    res.status(200).json({
+      message: "Estadio actualizado correctamente",
+      estadio: updatedEstadio,
+    });
   } catch (error: any) {
     if (error instanceof NotFoundError) {
       res.status(404).json({ message: error.message });

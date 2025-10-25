@@ -3,10 +3,6 @@ import { Request, Response } from "express";
 import { SectorService } from "../services/SectorService.js";
 import { parseIntOr } from "../utils/parser.utils.js";
 import { NotFoundError } from "../utils/errors.js";
-// import { Sector } from "../entities/Sector.entity.js"; // <-- Ya no es necesario
-
-// --- CORRECCIÓN ---
-// Importamos las interfaces que el Servicio espera
 import {
   CreateSectorData,
   UpdateSectorData,

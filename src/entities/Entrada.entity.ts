@@ -3,34 +3,19 @@ import {
   Entity,
   PrimaryKey,
   Property,
-  ManyToOne,
-  // Ya no importamos 'JoinColumns' ni 'ReferencedColumnNames'
+  ManyToOne, // Quitamos JoinColumns, etc.
 } from "@mikro-orm/core";
 import { Compra } from "./Compra.entity.js";
 import { Evento } from "./Evento.entity.js";
 import { Sector } from "./Sector.entity.js";
+import { Estadio } from "./Estadio.entity.js"; // Necesitamos Estadio para la referencia
 
 @Entity({ tableName: "entradas" })
 export class Entrada {
   @PrimaryKey({ fieldName: "id_entrada" })
   id!: number;
 
-  // --- INICIO DE CORRECCIÓN ---
-  // Borramos estas propiedades. Serán manejadas 100% por las relaciones.
-  /*
-  @Property({ fieldName: "fk_id_compra" })
-  fkIdCompra!: number;
-
-  @Property({ fieldName: "fk_id_evento" })
-  fkIdEvento!: number;
-
-  @Property({ fieldName: "fk_id_sector" })
-  fkIdSector!: number;
-
-  @Property({ fieldName: "fk_id_estadio" })
-  fkIdEstadio!: number;
-  */
-  // --- FIN DE CORRECCIÓN ---
+  // --- Propiedades FK eliminadas ---
 
   @Property({ fieldName: "codigo_qr", type: "text" })
   codigoQr!: string;
@@ -38,31 +23,42 @@ export class Entrada {
   @Property({ nullable: true, default: false })
   utilizada?: boolean = false;
 
-  @Property({ fieldName: "fecha_utilizacion", nullable: true })
+  @Property({
+    fieldName: "fecha_utilizacion",
+    nullable: true,
+    type: "datetime",
+  })
   fechaUtilizacion?: Date;
 
   @Property({ fieldName: "created_at", defaultRaw: "CURRENT_TIMESTAMP" })
   createdAt: Date = new Date();
 
   // Relaciones
-  @ManyToOne({ entity: () => Compra, fieldName: "fk_id_compra" })
+  @ManyToOne({
+    entity: () => Compra,
+    fieldName: "fk_id_compra",
+    onDelete: "cascade",
+  })
   compra!: Compra;
 
-  @ManyToOne({ entity: () => Evento, fieldName: "fk_id_evento" })
+  @ManyToOne({
+    entity: () => Evento,
+    fieldName: "fk_id_evento",
+    onDelete: "cascade",
+  })
   evento!: Evento;
 
-  // --- INICIO DE CORRECCIÓN ---
-  // Esta es la forma correcta de definir la relación
-  // con una clave primaria compuesta, usando las OPCIONES.
+  // --- Relación con Sector (Clave Compuesta) ---
   @ManyToOne({
     entity: () => Sector,
-    // Las columnas en *esta* tabla (Entrada)
-    joinColumns: ["fk_id_sector", "fk_id_estadio"],
-    // Las columnas en la tabla *objetivo* (Sector)
+    // Columnas en ESTA tabla (Entrada) que apuntan a Sector
+    fieldNames: ["fk_id_sector", "fk_id_estadio"],
+    // Columnas PK en la tabla Sector
     referencedColumnNames: ["id_sector", "fk_id_estadio"],
+    onDelete: "cascade",
   })
   sector!: Sector;
-  // --- FIN DE CORRECCIÓN ---
+  // --- Fin Relación ---
 
   constructor(data: Partial<Entrada> = {}) {
     Object.assign(this, data);

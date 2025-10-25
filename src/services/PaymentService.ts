@@ -5,10 +5,8 @@ import { Database } from "../config/database.js";
 import { Compra, MetodoPago, EstadoPago } from "../entities/Compra.entity.js";
 import { Entrada } from "../entities/Entrada.entity.js";
 import { PrecioEventoSector } from "../entities/PrecioEventoSector.entity.js";
-
 import { Evento } from "../entities/Evento.entity.js";
 import { Sector } from "../entities/Sector.entity.js";
-
 import { NotFoundError } from "../utils/errors.js";
 import { EntityManager } from "@mikro-orm/core";
 import { CompraRepository } from "../repositories/CompraRepository.js";
@@ -47,7 +45,7 @@ export class PaymentService {
         const precio = await em.getRepository(PrecioEventoSector).findOne({
           evento: data.eventoId,
           sector: { idSector: data.sectorId }, // Correct: Filter by the 'idSector' part of the composite key
-});
+        });
         if (!precio) {
           throw new NotFoundError(
             "Precio no encontrado para el sector y evento especificados."
@@ -118,7 +116,7 @@ export class PaymentService {
         const precio = await em.getRepository(PrecioEventoSector).findOne({
           evento: data.eventoId,
           sector: { idSector: data.sectorId }, // Correct: Filter by the 'idSector' part of the composite key
-});
+        });
 
         if (!precio) {
           throw new NotFoundError("Precio no encontrado.");
@@ -222,7 +220,9 @@ export class PaymentService {
               });
               const estadioId = evento?.estadio.id;
               if (!estadioId) {
-                throw new Error("No se pudo encontrar el estadio para el evento");
+                throw new Error(
+                  "No se pudo encontrar el estadio para el evento"
+                );
               }
               // --- FIN CORRECCIÓN ---
 

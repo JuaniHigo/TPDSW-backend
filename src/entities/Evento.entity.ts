@@ -7,6 +7,7 @@ import {
   OneToMany,
   Collection,
   Enum,
+  wrap, // Importa wrap
 } from "@mikro-orm/core";
 import { Club } from "./Club.entity.js";
 import { Estadio } from "./Estadio.entity.js";
@@ -26,32 +27,17 @@ export class Evento {
   @PrimaryKey({ fieldName: "id_evento" })
   id!: number;
 
-  // --- INICIO DE CORRECCIÓN ---
-  // Borramos estas 3 propiedades. Son redundantes con las relaciones @ManyToOne.
-  /*
-  @Property({ fieldName: "fk_id_club_local" })
-  fkIdClubLocal!: number;
+  // --- Propiedades FK eliminadas ---
 
-  @Property({ fieldName: "fk_id_club_visitante" })
-  fkIdClubVisitante!: number;
-
-  @Property({ fieldName: "fk_id_estadio" })
-  fkIdEstadio!: number;
-  */
-  // --- FIN DE CORRECCIÓN ---
-
-  @Property({ fieldName: "fecha_hora" })
+  @Property({ fieldName: "fecha_hora", type: "datetime" }) // type: 'datetime' es más explícito
   fechaHora!: Date;
 
   @Property({ length: 100 })
   torneo!: string;
 
-  // --- CORRECCIÓN DE SINTAXIS ENUM ---
-  // @Enum va separado de @Property
-  @Enum(() => EstadoEvento)
-  @Property({ default: EstadoEvento.PROGRAMADO })
+  @Enum(() => EstadoEvento) // Separado
+  @Property({ default: EstadoEvento.PROGRAMADO }) // Separado
   estado: EstadoEvento = EstadoEvento.PROGRAMADO;
-  // --- FIN DE CORRECCIÓN ---
 
   @Property({ fieldName: "solo_publico_local", default: false })
   soloPublicoLocal: boolean = false;
@@ -66,14 +52,17 @@ export class Evento {
   })
   updatedAt: Date = new Date();
 
-  // Relaciones (Estas son las definiciones correctas)
-  @ManyToOne(() => Club, { fieldName: "fk_id_club_local" })
+  // Relaciones (Correctas)
+  @ManyToOne(() => Club, { fieldName: "fk_id_club_local", onDelete: "cascade" }) // onDelete opcional
   clubLocal!: Club;
 
-  @ManyToOne(() => Club, { fieldName: "fk_id_club_visitante" })
+  @ManyToOne(() => Club, {
+    fieldName: "fk_id_club_visitante",
+    onDelete: "cascade",
+  }) // onDelete opcional
   clubVisitante!: Club;
 
-  @ManyToOne(() => Estadio, { fieldName: "fk_id_estadio" })
+  @ManyToOne(() => Estadio, { fieldName: "fk_id_estadio", onDelete: "cascade" }) // onDelete opcional
   estadio!: Estadio;
 
   @OneToMany(() => Entrada, (entrada) => entrada.evento)
@@ -86,12 +75,15 @@ export class Evento {
     Object.assign(this, data);
   }
 
+  // Getter para descripción (requiere que las relaciones estén cargadas)
   get descripcion(): string {
-    // Nota: Esto fallará si 'clubLocal' o 'clubVisitante' no están populados (cargados)
-    // Es mejor manejarlo en un DTO o 'wrapper'
-    if (this.clubLocal && this.clubVisitante) {
-      return `${this.clubLocal.nombre} vs ${this.clubVisitante.nombre}`;
-    }
-    return "Evento (detalles no cargados)";
+    // Es más seguro verificar si están cargados o usar wrap
+    const local = wrap(this.clubLocal).isInitialized()
+      ? this.clubLocal.nombre
+      : "[Local no cargado]";
+    const visitante = wrap(this.clubVisitante).isInitialized()
+      ? this.clubVisitante.nombre
+      : "[Visitante no cargado]";
+    return `${local} vs ${visitante}`;
   }
 }

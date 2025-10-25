@@ -5,36 +5,28 @@ import { Sector } from "../entities/Sector.entity.js";
 import { Estadio } from "../entities/Estadio.entity.js"; // Importamos Estadio para la referencia
 import { NotFoundError } from "../utils/errors.js";
 
-// Interfaz para paginación (genérica)
-interface PaginationResult<T> {
-  data: T[];
-  pagination: {
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
-  };
-}
+// ... (interface PaginationResult)
 
-// --- CORRECCIÓN ---
-// Creamos una interfaz para los datos de creación.
-// La clave compuesta (idSector, estadio) ES REQUERIDA al crear.
+// --- Tipos para datos de entrada ---
 export interface CreateSectorData {
-  idSector: number;
+  idSector: number; // La PK es necesaria al crear con claves compuestas explícitas
   estadio: number; // El ID del estadio
   nombreSector: string;
   capacidad: number;
 }
-
-// Para actualizar, todos los campos son opcionales
-export type UpdateSectorData = Partial<CreateSectorData>;
+export type UpdateSectorData = Partial<
+  Omit<CreateSectorData, "idSector" | "estadio">
+> & { estadio?: number };
+// --- Fin Tipos ---
 
 export class SectorService {
   private em: EntityManager;
+  // 1. Declara
   private sectorRepository;
 
   constructor() {
     this.em = Database.getEM();
+    // 2. Inicializa
     this.sectorRepository = this.em.getRepository(Sector);
   }
 
@@ -48,47 +40,56 @@ export class SectorService {
       {
         limit,
         offset,
-        // --- CORRECCIÓN (Línea 38) ---
-        // No se usa fkIdEstadio, se usa la propiedad de relación 'estadio'
-        orderBy: { estadio: "ASC" },
+        populate: ["estadio"], // Popula la relación
+        orderBy: { estadio: "ASC", nombreSector: "ASC" }, // Ordena por relación y nombre
       }
     );
-
+    // ... (retorna el resultado paginado)
     return {
       data: sectores,
-      pagination: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-      },
+      pagination: { total, page, limit, totalPages: Math.ceil(total / limit) },
     };
   }
 
   async getSectorById(idSector: number, idEstadio: number): Promise<Sector> {
-    // --- CORRECCIÓN (Línea 56) ---
-    // Se filtra por la clave compuesta: 'idSector' y la relación 'estadio'
-    const sector = await this.sectorRepository.findOne({
-      idSector: idSector,
-      estadio: idEstadio,
-    });
+    const sector = await this.sectorRepository.findOne(
+      {
+        idSector: idSector,
+        estadio: idEstadio, // Filtra por la relación usando el ID
+      },
+      { populate: ["estadio"] }
+    ); // Popula si necesitas los datos del estadio
 
     if (!sector) {
-      throw new NotFoundError("Sector no encontrado");
+      throw new NotFoundError(
+        `Sector no encontrado con ID ${idSector} en Estadio ${idEstadio}`
+      );
     }
     return sector;
   }
 
   async createSector(data: CreateSectorData): Promise<Sector> {
-    // --- CORRECCIÓN (Líneas 68 y 74) ---
-    // El tipo 'data' ahora es 'CreateSectorData' y SÍ incluye las claves.
-    // Pasamos los datos explícitamente al 'create'.
+    // Validar que el estadio exista
+    const estadioRef = this.em.getReference(Estadio, data.estadio); // Obtiene una referencia
+
+    // Crea la entidad pasando las partes de la PK y el resto
     const newSector = this.em.create(Sector, {
       idSector: data.idSector,
+      estadio: estadioRef, // Usa la referencia
       nombreSector: data.nombreSector,
       capacidad: data.capacidad,
-      estadio: data.estadio, // MikroORM entiende que esto es el ID para la relación
     });
+
+    // Verifica si ya existe (opcional pero recomendado)
+    const existing = await this.sectorRepository.findOne({
+      idSector: data.idSector,
+      estadio: data.estadio,
+    });
+    if (existing) {
+      throw new Error(
+        `El sector ${data.idSector} ya existe en el estadio ${data.estadio}`
+      );
+    }
 
     await this.em.persistAndFlush(newSector);
     return newSector;
@@ -101,15 +102,20 @@ export class SectorService {
   ): Promise<Sector> {
     const sector = await this.getSectorById(idSector, idEstadio);
 
-    // Separamos 'estadio' del resto de datos
-    const { estadio, ...restOfData } = data;
+    // Separamos 'estadio' (ID) del resto
+    const { estadio: newEstadioId, ...restOfData } = data;
 
-    // Asignamos los datos simples (nombre, capacidad)
+    // Asignamos datos simples
     wrap(sector).assign(restOfData);
 
-    // Si el 'estadio' (ID) viene en los datos, lo actualizamos como referencia
-    if (estadio) {
-      sector.estadio = this.em.getReference(Estadio, estadio);
+    // Si se pasa un nuevo ID de estadio, actualizamos la referencia
+    if (newEstadioId && newEstadioId !== sector.estadio.id) {
+      // ¡Ojo! Cambiar la parte de una PK compuesta es complejo y usualmente no se hace.
+      // Requeriría borrar y crear uno nuevo o una lógica de BD más avanzada.
+      // Por ahora, lanzaremos un error si se intenta.
+      throw new Error("No se puede cambiar el estadio de un sector existente.");
+      // Si realmente necesitas hacerlo:
+      // sector.estadio = this.em.getReference(Estadio, newEstadioId);
     }
 
     await this.em.flush();
@@ -117,7 +123,6 @@ export class SectorService {
   }
 
   async deleteSector(idSector: number, idEstadio: number): Promise<void> {
-    // Usamos el método local para encontrar por clave compuesta
     const sector = await this.getSectorById(idSector, idEstadio);
     await this.em.removeAndFlush(sector);
   }

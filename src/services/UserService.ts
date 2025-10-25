@@ -1,9 +1,9 @@
 // src/services/UserService.ts
-import { EntityManager, wrap } from "@mikro-orm/core";
+import { EntityManager, wrap, EntityDTO } from "@mikro-orm/core"; // <-- Importa EntityDTO y wrap
 import { Database } from "../config/database.js";
 import { User } from "../entities/User.entity.js";
 import { UserRepository } from "../repositories/UserRepository.js";
-import { NotFoundError } from "../utils/errors.js"; // (Deberías crear un archivo de errores)
+import { NotFoundError } from "../utils/errors.js";
 
 export class UserService {
   private em: EntityManager;
@@ -14,46 +14,29 @@ export class UserService {
     this.userRepository = this.em.getRepository(User) as UserRepository;
   }
 
-  async getAllUsers(): Promise<Partial<User>[]> {
-    // Usamos 'fields' para excluir la contraseña
-    return this.userRepository.findAll({
-      fields: [
-        "id",
-        "dni",
-        "nombre",
-        "apellidos",
-        "email",
-        "fechaNacimiento",
-        "role",
-      ],
+  async getAllUsers(): Promise<EntityDTO<User>[]> {
+    // <-- Usa EntityDTO
+    const users = await this.userRepository.findAll({
+      // Quita el { fields [...] }
+      // MikroORM automáticamente excluye campos hidden:true al serializar
     });
+    // Mapea a DTOs para excluir la contraseña correctamente
+    return users.map((u) => wrap(u).toObject());
   }
 
-  async getUserById(id: number): Promise<Partial<User> | null> {
-    return this.userRepository.findOne(
-      { id },
-      {
-        fields: [
-          "id",
-          "dni",
-          "nombre",
-          "apellidos",
-          "email",
-          "fechaNacimiento",
-          "role",
-        ],
-      }
-    );
+  async getUserById(id: number): Promise<EntityDTO<User> | null> {
+    // <-- Usa EntityDTO
+    const user = await this.userRepository.findOne({ id });
+    return user ? wrap(user).toObject() : null; // Excluye pass al retornar
   }
 
-  async updateUser(id: number, data: Partial<User>): Promise<Partial<User>> {
+  async updateUser(id: number, data: Partial<User>): Promise<EntityDTO<User>> {
+    // <-- Usa EntityDTO
     const user = await this.userRepository.findOne({ id });
     if (!user) {
       throw new NotFoundError("Usuario no encontrado para actualizar");
     }
 
-    // Usamos wrap.assign() para actualizar solo los campos provistos
-    // Nos aseguramos de no actualizar campos sensibles como password o role desde esta ruta
     const updateData = {
       nombre: data.nombre,
       apellidos: data.apellidos,
@@ -62,14 +45,12 @@ export class UserService {
     wrap(user).assign(updateData);
     await this.em.flush();
 
-    return user.toJSON(); // Usamos el helper toJSON() de la entidad
+    return wrap(user).toObject(); // Usa wrap().toObject()
   }
 
   async deleteUser(id: number): Promise<void> {
-    const user = await this.userRepository.findOne({ id });
-    if (!user) {
-      throw new NotFoundError("Usuario no encontrado para eliminar");
-    }
+    // findOneOrFail lanza error si no lo encuentra
+    const user = await this.userRepository.findOneOrFail({ id });
     await this.em.removeAndFlush(user);
   }
 }

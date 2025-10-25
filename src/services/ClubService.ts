@@ -1,80 +1,91 @@
 // src/services/ClubService.ts
 import { EntityManager, wrap } from "@mikro-orm/core";
 import { Database } from "../config/database.js";
-import { Club } from "../entities/Club.entity.js"; // <-- Importa la entidad Club
+import { Club } from "../entities/Club.entity.js";
+import { ClubRepository } from "../repositories/ClubRepository.js"; // Importa el Repo si existe
 import { NotFoundError } from "../utils/errors.js";
 
-// Esta interfaz genérica la puedes reutilizar
-interface PaginationResult<T> {
-  data: T[];
-  pagination: {
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
-  };
-}
+// ... (interface PaginationResult)
 
 export class ClubService {
   private em: EntityManager;
-  // Apunta al repositorio de Club
-  private clubRepository; 
+  // 1. Declara (usa el tipo específico si tienes repo custom)
+  private clubRepository: ClubRepository;
 
   constructor() {
     this.em = Database.getEM();
-    this.clubRepository = this.em.getRepository(Club);
+    // 2. Inicializa (castea al tipo específico si es necesario)
+    this.clubRepository = this.em.getRepository(Club) as ClubRepository;
   }
 
-  async getAllClubs(
+  // Cambiado: getAllClubs -> getAllClubes para coincidir con el controller
+  async getAllClubes(
     page: number,
     limit: number
   ): Promise<PaginationResult<Club>> {
     const offset = (page - 1) * limit;
-    // Cambia 'estadios' por 'clubs'
-    const [clubs, total] = await this.clubRepository.findAndCount(
+    const [clubes, total] = await this.clubRepository.findAndCount(
       {},
-      {
-        limit,
-        offset,
-        orderBy: { nombre: "ASC" }, // Asumo que Club también tiene un campo 'nombre'
-      }
+      { limit, offset, orderBy: { nombre: "ASC" } }
     );
-
     return {
-      data: clubs, // Retorna 'clubs'
-      pagination: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-      },
+      data: clubes,
+      pagination: { total, page, limit, totalPages: Math.ceil(total / limit) },
     };
   }
 
   async getClubById(id: number): Promise<Club> {
     const club = await this.clubRepository.findOne({ id });
     if (!club) {
-      throw new NotFoundError("Club no encontrado"); // Mensaje de error actualizado
+      throw new NotFoundError("Club no encontrado");
     }
     return club;
   }
 
-  // Asumo que la data para crear un club es similar (omitiendo el id)
-  async createClub(data: Omit<Club, "id">): Promise<Club> {
-    const newClub = this.em.create(Club, data); // Crea un Club
+  async createClub(
+    data: Omit<
+      Club,
+      | "id"
+      | "socios"
+      | "eventosLocales"
+      | "eventosVisitante"
+      | "createdAt"
+      | "updatedAt"
+      | "getProximoNumeroSocio"
+    >
+  ): Promise<Club> {
+    // Validar duplicados
+    const existing = await this.clubRepository.findOne({
+      $or: [{ nombre: data.nombre }, { prefijo: data.prefijo }],
+    });
+    if (existing) {
+      throw new Error("El nombre o prefijo del club ya existe.");
+    }
+
+    const newClub = this.em.create(Club, data);
     await this.em.persistAndFlush(newClub);
     return newClub;
   }
 
   async updateClub(id: number, data: Partial<Club>): Promise<Club> {
-    const club = await this.getClubById(id); // Usa el método local
-    wrap(club).assign(data);
+    const club = await this.getClubById(id);
+    // Excluye campos que no deberían actualizarse masivamente
+    const {
+      id: _,
+      socios,
+      eventosLocales,
+      eventosVisitante,
+      createdAt,
+      updatedAt,
+      ...updateData
+    } = data;
+    wrap(club).assign(updateData);
     await this.em.flush();
     return club;
   }
 
   async deleteClub(id: number): Promise<void> {
-    const club = await this.getClubById(id); // Usa el método local
+    const club = await this.getClubById(id);
     await this.em.removeAndFlush(club);
   }
 }
