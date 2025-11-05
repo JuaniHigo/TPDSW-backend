@@ -1,4 +1,3 @@
-// src/controllers/clubes.controller.ts
 import { Request, Response } from "express";
 import { ClubService } from "../services/ClubService";
 import { parseIntOr } from "../utils/parser.utils";

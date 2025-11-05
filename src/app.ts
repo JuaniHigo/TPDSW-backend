@@ -1,4 +1,24 @@
 import "reflect-metadata";
+<<<<<<< Updated upstream
+=======
+// --- LÍNEA 1: EL ATRAPADOR GLOBAL DEBE ESTAR AQUÍ ---
+process.on("uncaughtException", (err, origin) => {
+  console.error("!!!!!!!!!! EXCEPCIÓN GLOBAL NO ATRAPADA !!!!!!!!!!!");
+  console.error("Origen:", origin);
+
+  if (err instanceof Error) {
+    console.error("Error:", err.message);
+    console.error("Stack:", err.stack);
+  } else {
+    // Esto imprimirá el [Object: null prototype]
+    console.error("Error (Objeto Desconocido):", err);
+  }
+  console.error("!!!!!!!!!! FINAL DE EXCEPCIÓN !!!!!!!!!!!");
+  process.exit(1); // Detiene la app
+});
+// --- FIN DEL ATRAPADOR ---
+
+>>>>>>> Stashed changes
 import express, { Application } from "express";
 import dotenv from "dotenv";
 import cors from "cors";

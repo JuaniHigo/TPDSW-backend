@@ -21,9 +21,12 @@ interface PaymentData {
 }
 
 export class PaymentService {
+<<<<<<< Updated upstream
   // No guardamos 'em' en el constructor, lo obtenemos por método
   // para asegurar que sea el de la request actual.
 
+=======
+>>>>>>> Stashed changes
   async crearPreferenciaMercadoPago(
     data: PaymentData
   ): Promise<{ preferenceId: string }> {
@@ -31,10 +34,24 @@ export class PaymentService {
 
     try {
       return await em.transactional(async (em) => {
+<<<<<<< Updated upstream
         // Buscar precio
         const precio = await em.getRepository(PrecioEventoSector).findOne({
           fkIdEvento: data.eventoId,
           fkIdSector: data.sectorId,
+=======
+        const evento = await em.findOne(Evento, data.eventoId, {
+          populate: ["estadio"],
+        });
+        if (!evento) {
+          throw new NotFoundError("Evento no encontrado.");
+        }
+        const estadioId = evento.estadio.id;
+
+        const precio = await em.getRepository(PrecioEventoSector).findOne({
+          evento: data.eventoId,
+          sector: [data.sectorId, estadioId], // Correct: Filter by the 'idSector' part of the composite key
+>>>>>>> Stashed changes
         });
 
         if (!precio) {
@@ -45,7 +62,10 @@ export class PaymentService {
 
         const montoTotal = Number(precio.precio) * data.quantity;
 
+<<<<<<< Updated upstream
         // Crear compra
+=======
+>>>>>>> Stashed changes
         const compra = new Compra({
           fkIdUsuario: data.userId,
           montoTotal,
@@ -56,7 +76,10 @@ export class PaymentService {
         em.persist(compra);
         await em.flush(); // Para obtener el ID
 
+<<<<<<< Updated upstream
         // Crear preferencia de MercadoPago
+=======
+>>>>>>> Stashed changes
         const preference = new Preference(client);
         const preferenceResult = await preference.create({
           body: {
@@ -103,10 +126,24 @@ export class PaymentService {
 
     try {
       return await em.transactional(async (em) => {
+<<<<<<< Updated upstream
         // Buscar precio
         const precio = await em.getRepository(PrecioEventoSector).findOne({
           fkIdEvento: data.eventoId,
           fkIdSector: data.sectorId,
+=======
+        const evento = await em.findOne(Evento, data.eventoId, {
+          populate: ["estadio"],
+        });
+        if (!evento) {
+          throw new NotFoundError("Evento no encontrado.");
+        }
+        const estadioId = evento.estadio.id;
+
+        const precio = await em.getRepository(PrecioEventoSector).findOne({
+          evento: data.eventoId,
+          sector: [data.sectorId, estadioId], // Correct: Filter by the 'idSector' part of the composite key
+>>>>>>> Stashed changes
         });
 
         if (!precio) {
@@ -237,6 +274,7 @@ export class PaymentService {
     userId: number
   ): Promise<Entrada[]> {
     const em = Database.getEM();
+<<<<<<< Updated upstream
     const compraRepo = em.getRepository(Compra) as CompraRepository;
 
     // Primero, validamos que la compra pertenezca al usuario
@@ -244,11 +282,21 @@ export class PaymentService {
       id: compraId,
       fkIdUsuario: userId,
     });
+=======
+    const compra = await em.getRepository(Compra).findOne({
+      id: compraId,
+      usuario: userId,
+    });
+
+>>>>>>> Stashed changes
     if (!compra) {
       throw new NotFoundError("Compra no encontrada o no pertenece al usuario");
     }
 
+<<<<<<< Updated upstream
     // Si pertenece, buscamos las entradas con sus relaciones
+=======
+>>>>>>> Stashed changes
     const entradas = await em.getRepository(Entrada).find(
       { fkIdCompra: compraId },
       {
@@ -256,6 +304,7 @@ export class PaymentService {
           "evento",
           "evento.clubLocal",
           "evento.clubVisitante",
+          "evento.estadio",
           "sector",
         ],
       }
