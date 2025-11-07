@@ -1,6 +1,5 @@
 {
   "name": "tpdsw-backend",
-  "type": "module",
   "module": "es2022",
   "version": "1.0.0",
   "description": "Este repositorio tiene la finalidad de almacenar la parte correspondiente al back-end de nuestro proyecto",
@@ -15,8 +14,10 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@mikro-orm/core": "6.5.1",
-    "@mikro-orm/mysql": "6.5.1",
+    "@mikro-orm/core": "6.5.9",
+    "@mikro-orm/entity-generator": "6.5.9",
+    "@mikro-orm/mysql": "6.5.9",
+    "@mikro-orm/reflection": "^6.5.9",
     "@mikro-orm/sql-highlighter": "1.0.1",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.2",
@@ -35,6 +36,7 @@
     "zod": "^4.0.13"
   },
   "devDependencies": {
+    "@mikro-orm/cli": "^6.5.9",
     "@types/bcrypt": "^5.0.2",
     "@types/bcryptjs": "^3.0.0",
     "@types/compression": "^1.8.1",
@@ -48,5 +50,11 @@
     "nodemon": "^3.1.10",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3"
+  },
+  "mikro-orm": {
+    "useTsNode": true,
+    "configPaths": [
+      "./src/mikro-orm.config.ts"
+    ]
   }
 }
