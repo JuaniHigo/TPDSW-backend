@@ -10,7 +10,7 @@ export class Sectores {
   idSector!: number;
 
   @ManyToOne({ entity: () => Estadios, updateRule: 'cascade', primary: true, index: 'fk_Sectores_Estadios_idx' })
-  fk!: Estadios;
+  fkIdEstadio!: Estadios;
 
   @Property({ length: 100 })
   nombreSector!: string;

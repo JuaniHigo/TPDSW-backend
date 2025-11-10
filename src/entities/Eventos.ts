@@ -17,7 +17,7 @@ export class Eventos {
   fkIdClubVisitante!: Clubes;
 
   @ManyToOne({ entity: () => Estadios, updateRule: 'cascade', index: 'fk_Eventos_Estadios_idx' })
-  fk!: Estadios;
+  fkIdEstadio!: Estadios;
 
   @Property()
   fechaHora!: Date;
