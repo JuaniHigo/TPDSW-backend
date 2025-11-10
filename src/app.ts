@@ -3,34 +3,33 @@ import express, { Application } from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 import compression from "compression";
-import { orm, syncSchema } from "./shared/db/orm.js";
-
-// Importación de todas las rutas
+import { MikroORM, RequestContext } from "@mikro-orm/core";
+import config from "./mikro-orm.config";
+//importa las rutas
 import userRoutes from "./routes/user.routes";
 import sociosRoutes from "./routes/socios.routes";
 import clubesRoutes from "./routes/clubes.routes";
 import estadiosRoutes from "./routes/estadios.routes";
 import eventosRoutes from "./routes/eventos.routes";
 import authRoutes from "./routes/auth.routes";
-import tipoEntradaRoutes from "./routes/tipoEntrada.routes";
+import preciosRoutes from "./routes/precios.routes";
 import sectoresRoutes from "./routes/sectores.routes";
-import pagoRoutes from "./routes/pago.routes"; // <-- AÑADIR ESTA LÍNEA
-import { RequestContext } from "@mikro-orm/core";
+import pagoRoutes from "./routes/pago.routes";
 
 dotenv.config();
 
 const app: Application = express();
 const PORT = process.env.PORT || 3000;
+export const orm = await MikroORM.init(config);
 
 // Middlewares
 app.use(compression());
 app.use(cors());
 app.use(express.json());
-//el orm se pone despues de los middlewares
+// Contexto de la solicitud para MikroORM
 app.use((req, res, next) => {
   RequestContext.create(orm.em, next);
 });
-//y antes de las rutas de negocio
 // Rutas
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
@@ -38,11 +37,9 @@ app.use("/api/socios", sociosRoutes);
 app.use("/api/clubes", clubesRoutes);
 app.use("/api/estadios", estadiosRoutes);
 app.use("/api/eventos", eventosRoutes);
-app.use("/api/tipoEntrada", tipoEntradaRoutes);
+app.use("/api/precios", preciosRoutes);
 app.use("/api/sectores", sectoresRoutes);
-app.use("/api/pagos", pagoRoutes); // <-- AÑADIR ESTA LÍNEA
-
-await syncSchema(); //never in production
+app.use("/api/pagos", pagoRoutes);
 
 // Iniciar el servidor
 app.listen(PORT, () => {

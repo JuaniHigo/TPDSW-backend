@@ -1,227 +1,288 @@
-import { Request, Response } from 'express';
-import { MercadoPagoConfig, Preference, Payment } from 'mercadopago';
-import pool from '../config/database';
-import dotenv from 'dotenv';
-import QRCode from 'qrcode';
-import bcrypt from 'bcrypt'; // Asegúrate de tener bcrypt importado si lo usas en otras funciones
+import { Request, Response } from "express";
+import { MercadoPagoConfig, Preference, Payment } from "mercadopago";
+import { orm } from "../app";
+import { PreciosEventoSector } from "../entities/PreciosEventoSector";
+import { Compras } from "../entities/Compras";
+import { Entradas } from "../entities/Entradas";
+import { Eventos } from "../entities/Eventos";
+import { Usuarios } from "../entities/Usuarios";
+
+import dotenv from "dotenv";
+import QRCode from "qrcode";
 
 dotenv.config();
 
-const client = new MercadoPagoConfig({ 
-    accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN! 
+const client = new MercadoPagoConfig({
+  accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN!,
 });
 
-export const crearPreferenciaMercadoPago = async (req: Request, res: Response) => {
-    const userId = (req.user as any)?.id_usuario;
+// Función para generar entradas (la usaremos en MP y Tarjeta)
+async function generarEntradas(
+  em: typeof orm.em,
+  id_compra: number,
+  eventoId: number,
+  sectorId: number,
+  quantity: number
+) {
+  for (let i = 0; i < quantity; i++) {
+    // Creamos la entrada
+    const nuevaEntrada = em.create(Entradas, {
+      fk_id_compra: id_compra,
+      fk_id_evento: eventoId,
+      fk_id_sector: sectorId,
+      codigo_qr: "generating...", // QR temporal
+    });
 
-    if (!userId) {
-        return res.status(401).json({ message: 'Usuario no autenticado.' });
-    }
+    await em.flush(); // Guardamos para obtener el ID de la entrada
 
-    const { eventoId, sectorId, quantity } = req.body;
+    // Generamos el QR con el ID real
+    const qrData = JSON.stringify({
+      entradaId: nuevaEntrada.id_entrada,
+      eventoId,
+      compraId: id_compra,
+    });
+    nuevaEntrada.codigoQr = await QRCode.toDataURL(qrData);
 
-    if (!eventoId || !sectorId || !quantity) {
-        return res.status(400).json({ message: 'Faltan datos (evento, sector, cantidad).' });
-    }
+    await em.flush(); // Actualizamos la entrada con el QR
+  }
+}
 
-    const connection = await pool.getConnection();
-    try {
-        await connection.beginTransaction();
+// Crear preferencia de Mercado Pago
+export const crearPreferenciaMercadoPago = async (
+  req: Request,
+  res: Response
+) => {
+  const userId = (req.user as any)?.id_usuario;
+  if (!userId) {
+    return res.status(401).json({ message: "Usuario no autenticado." });
+  }
 
-        const [priceRows]: any = await connection.query(
-            "SELECT precio FROM precios_evento_sector WHERE fk_id_evento = ? AND fk_id_sector = ?",
-            [eventoId, sectorId]
-        );
-        if (priceRows.length === 0) {
-            throw new Error('Precio no encontrado para el sector y evento especificados.');
+  const { eventoId, sectorId, quantity } = req.body;
+  if (!eventoId || !sectorId || !quantity) {
+    return res
+      .status(400)
+      .json({ message: "Faltan datos (evento, sector, cantidad)." });
+  }
+
+  try {
+    const { preferenceId, id_compra } = await orm.em.transactional(
+      async (em) => {
+        // 1. Obtener precio
+        const precioData = await em.findOne(PreciosEventoSector, {
+          fk_id_evento: eventoId,
+          fk_id_sector: sectorId,
+        });
+        if (!precioData) {
+          throw new Error("Precio no encontrado para el sector y evento.");
         }
-        const monto_total = priceRows[0].precio * Number(quantity);
+        const monto_total = precioData.precio * Number(quantity);
 
-        const [compraResult]: any = await connection.query(
-            "INSERT INTO compras (fk_id_usuario, monto_total, metodo_pago, estado_pago) VALUES (?, ?, ?, ?)",
-            [userId, monto_total, 'mercadopago', 'pendiente']
-        );
-        const id_compra = compraResult.insertId;
+        // 2. Crear la Compra
+        const nuevaCompra = em.create(Compras, {
+          fk_id_usuario: userId,
+          monto_total,
+          metodo_pago: "mercadopago",
+          estado_pago: "pendiente",
+          // fecha_compra se inserta por DEFAULT
+        });
+        await em.flush(); // Guardamos para obtener el ID de compra
 
+        const id_compra = nuevaCompra.id_compra;
+
+        // 3. Crear Preferencia de MP
         const preference = new Preference(client);
         const preferenceResult = await preference.create({
-            body: {
-                items: [
-                    {
-                        id: `evento-${eventoId}-sector-${sectorId}`,
-                        title: `Entrada Evento #${eventoId}`,
-                        description: `Entrada para el sector #${sectorId}`,
-                        quantity: Number(quantity),
-                        unit_price: Number(priceRows[0].precio),
-                        currency_id: 'ARS'
-                    }
-                ],
-                back_urls: {
-                    success: `${process.env.FRONTEND_URL}/compra-exitosa`,
-                    failure: `${process.env.FRONTEND_URL}/compra-fallida`,
-                },
-                auto_return: 'approved',
-                external_reference: id_compra.toString(),
-            }
+          body: {
+            items: [
+              {
+                id: `evento-${eventoId}-sector-${sectorId}`,
+                title: `Entrada Evento #${eventoId}`,
+                description: `Entrada para el sector #${sectorId}`,
+                quantity: Number(quantity),
+                unit_price: Number(precioData.precio),
+                currency_id: "ARS",
+              },
+            ],
+            back_urls: {
+              success: `${process.env.FRONTEND_URL}/compra-exitosa`,
+              failure: `${process.env.FRONTEND_URL}/compra-fallida`,
+            },
+            auto_return: "approved",
+            external_reference: id_compra.toString(),
+            // Guardamos esto para el webhook
+            metadata: { eventoId, sectorId, quantity: Number(quantity) },
+          },
         });
 
-        await connection.query(
-            "UPDATE compras SET id_preferencia_mp = ? WHERE id_compra = ?",
-            [preferenceResult.id, id_compra]
-        );
+        // 4. Actualizar Compra con ID de preferencia
+        nuevaCompra.id_preferencia_mp = preferenceResult.id;
+        await em.flush();
 
-        await connection.commit();
-        res.status(201).json({ preferenceId: preferenceResult.id });
+        return { preferenceId: preferenceResult.id, id_compra };
+      }
+    );
 
-    } catch (error) {
-        await connection.rollback();
-        console.error('Error al crear la preferencia:', error);
-        res.status(500).json({ message: 'Error interno del servidor.' });
-    } finally {
-        connection.release();
-    }
+    res.status(201).json({ preferenceId });
+  } catch (error: any) {
+    console.error("Error al crear la preferencia:", error);
+    res
+      .status(500)
+      .json({ message: "Error interno del servidor.", error: error.message });
+  }
 };
 
-// NUEVA FUNCIÓN para procesar pagos con tarjeta (simulado)
+// Procesar pagos con tarjeta (simulado)
 export const procesarPagoTarjeta = async (req: Request, res: Response) => {
-    const userId = (req.user as any)?.id_usuario;
-    if (!userId) {
-        return res.status(401).json({ message: 'Usuario no autenticado.' });
-    }
+  const userId = (req.user as any)?.id_usuario;
+  if (!userId) {
+    return res.status(401).json({ message: "Usuario no autenticado." });
+  }
 
-    const { eventoId, sectorId, quantity } = req.body;
-    if (!eventoId || !sectorId || !quantity) {
-        return res.status(400).json({ message: 'Faltan datos para procesar la compra.' });
-    }
+  const { eventoId, sectorId, quantity } = req.body;
+  if (!eventoId || !sectorId || !quantity) {
+    return res.status(400).json({ message: "Faltan datos." });
+  }
 
-    const connection = await pool.getConnection();
-    try {
-        await connection.beginTransaction();
+  try {
+    const id_compra = await orm.em.transactional(async (em) => {
+      // 1. Obtener precio
+      const precioData = await em.findOne(PreciosEventoSector, {
+        fk_id_evento: eventoId,
+        fk_id_sector: sectorId,
+      });
+      if (!precioData) {
+        throw new Error("Precio no encontrado.");
+      }
+      const monto_total = precioData.precio * Number(quantity);
 
-        const [priceRows]: any = await connection.query(
-            "SELECT precio FROM precios_evento_sector WHERE fk_id_evento = ? AND fk_id_sector = ?",
-            [eventoId, sectorId]
-        );
-        if (priceRows.length === 0) {
-            throw new Error('Precio no encontrado.');
-        }
-        const monto_total = priceRows[0].precio * Number(quantity);
+      // 2. Crear la Compra
+      const nuevaCompra = em.create(Compras, {
+        fk_id_usuario: userId,
+        monto_total,
+        metodo_pago: "tarjeta",
+        estado_pago: "completada",
+      });
+      await em.flush();
 
-        const [compraResult]: any = await connection.query(
-            "INSERT INTO compras (fk_id_usuario, monto_total, metodo_pago, estado_pago) VALUES (?, ?, ?, ?)",
-            [userId, monto_total, 'tarjeta', 'completada']
-        );
-        const id_compra = compraResult.insertId;
+      // 3. Generar Entradas
+      await generarEntradas(
+        em,
+        nuevaCompra.id_compra,
+        eventoId,
+        sectorId,
+        Number(quantity)
+      );
 
-        for (let i = 0; i < quantity; i++) {
-            // CAMBIO: Insertamos un valor temporal en codigo_qr para evitar el error
-            const [entradaResult]: any = await connection.query(
-                "INSERT INTO entradas (fk_id_compra, fk_id_evento, fk_id_sector, codigo_qr) VALUES (?, ?, ?, ?)",
-                [id_compra, eventoId, sectorId, 'generating...']
-            );
-            const id_entrada = entradaResult.insertId;
+      return nuevaCompra.id_compra;
+    });
 
-            const qrData = JSON.stringify({ entradaId: id_entrada, eventoId, compraId: id_compra });
-            const qrCodeUrl = await QRCode.toDataURL(qrData);
-
-            await connection.query(
-                "UPDATE entradas SET codigo_qr = ? WHERE id_entrada = ?",
-                [qrCodeUrl, id_entrada]
-            );
-        }
-
-        await connection.commit();
-        res.status(201).json({ message: 'Compra procesada con éxito.', id_compra: id_compra });
-
-    } catch (error) {
-        await connection.rollback();
-        console.error("Error al procesar pago con tarjeta:", error);
-        res.status(500).json({ message: 'Error interno del servidor.' });
-    } finally {
-        connection.release();
-    }
+    res.status(201).json({ message: "Compra procesada con éxito.", id_compra });
+  } catch (error: any) {
+    console.error("Error al procesar pago con tarjeta:", error);
+    res
+      .status(500)
+      .json({ message: "Error interno del servidor.", error: error.message });
+  }
 };
 
-
+// Webhook de Mercado Pago
 export const recibirConfirmacionPago = async (req: Request, res: Response) => {
-    const { data } = req.body;
-    if (data && data.id) {
-        const connection = await pool.getConnection();
-        try {
-            const payment = new Payment(client);
-            const paymentInfo = await payment.get({ id: data.id });
+  const { data } = req.body;
 
-            if (paymentInfo && paymentInfo.status === 'approved' && paymentInfo.external_reference) {
-                const id_compra = paymentInfo.external_reference;
-
-                await connection.beginTransaction();
-
-                await connection.query(
-                    "UPDATE compras SET estado_pago = 'completada', id_pago_mp = ? WHERE id_compra = ?",
-                    [paymentInfo.id, id_compra]
-                );
-
-                // Lógica para obtener datos de la compra y crear entradas
-                // Esta parte puede necesitar ajustes según cómo almacenes la info de la preferencia
-                const [compraRows]: any = await connection.query(
-                    `SELECT fk_id_usuario, eventoId, sectorId, quantity FROM tu_tabla_temporal WHERE id_compra = ?`, 
-                    [id_compra]
-                );
-
-                if (compraRows.length > 0) {
-                    const { eventoId, sectorId, quantity } = compraRows[0];
-
-                    for (let i = 0; i < quantity; i++) {
-                        const [entradaResult]: any = await connection.query(
-                            "INSERT INTO entradas (fk_id_compra, fk_id_evento, fk_id_sector) VALUES (?, ?, ?)",
-                            [id_compra, eventoId, sectorId]
-                        );
-                        const id_entrada = entradaResult.insertId;
-
-                        const qrData = JSON.stringify({ entradaId: id_entrada, eventoId, compraId: id_compra });
-                        const qrCodeUrl = await QRCode.toDataURL(qrData);
-
-                        await connection.query(
-                            "UPDATE entradas SET codigo_qr = ? WHERE id_entrada = ?",
-                            [qrCodeUrl, id_entrada]
-                        );
-                    }
-                }
-                await connection.commit();
-            }
-        } catch (error) {
-            await connection.rollback();
-            console.error("Error en el webhook de Mercado Pago:", error);
-        } finally {
-            connection.release();
-        }
-    }
-    res.status(200).send("OK");
-};
-// ... (otras funciones del controlador)
-
-export const getEntradasPorCompra = async (req: Request, res: Response) => {
-    const { id_compra } = req.params;
-    const userId = (req.user as any)?.id_usuario;
+  if (data && data.id) {
+    // Usamos un 'fork' del EM para un contexto aislado (¡CRÍTICO!)
+    const em = orm.em.fork();
 
     try {
-        // --- CONSULTA SQL SIMPLIFICADA Y ROBUSTA ---
-        const sql = `
-            SELECT 
-                e.id_entrada,
-                e.codigo_qr,
-                (SELECT cl.nombre FROM clubes cl JOIN eventos ev ON cl.id_club = ev.fk_id_club_local WHERE ev.id_evento = e.fk_id_evento) AS nombre_local,
-                (SELECT cv.nombre FROM clubes cv JOIN eventos ev ON cv.id_club = ev.fk_id_club_visitante WHERE ev.id_evento = e.fk_id_evento) AS nombre_visitante
-            FROM entradas e
-            JOIN compras c ON e.fk_id_compra = c.id_compra
-            WHERE e.fk_id_compra = ? AND c.fk_id_usuario = ?
-        `;
-        // ---------------------------------------------
+      const payment = new Payment(client);
+      const paymentInfo = await payment.get({ id: data.id });
 
-        const [rows]: any = await pool.query(sql, [id_compra, userId]);
-        res.status(200).json(rows);
+      if (
+        paymentInfo &&
+        paymentInfo.status === "approved" &&
+        paymentInfo.external_reference
+      ) {
+        const id_compra = parseInt(paymentInfo.external_reference);
+
+        await em.transactional(async (txEm) => {
+          const compra = await txEm.findOne(Compras, { id_compra });
+
+          if (!compra || compra.estado_pago === "completada") {
+            // Si no existe o ya fue procesada, salimos
+            return;
+          }
+
+          // 1. Actualizar la compra
+          compra.estado_pago = "completada";
+          compra.id_pago_mp = paymentInfo.id?.toString();
+
+          // 2. Obtener datos para crear entradas (desde metadata)
+          const { eventoId, sectorId, quantity } = paymentInfo.metadata;
+
+          if (eventoId && sectorId && quantity) {
+            // 3. Generar Entradas
+            await generarEntradas(
+              txEm,
+              id_compra,
+              eventoId,
+              sectorId,
+              quantity
+            );
+          } else {
+            throw new Error(`Faltan metadatos en el pago ${paymentInfo.id}`);
+          }
+        });
+      }
     } catch (error) {
-        console.error("Error detallado al obtener entradas:", error);
-        res.status(500).json({ message: "Error al obtener las entradas." });
+      console.error("Error en el webhook de Mercado Pago:", error);
     }
+  }
+  res.status(200).send("OK");
+};
+
+// Obtener entradas por compra
+export const getEntradasPorCompra = async (req: Request, res: Response) => {
+  const { id_compra } = req.params;
+  const userId = (req.user as any)?.id_usuario;
+
+  try {
+    // Verificamos que la compra pertenezca al usuario
+    const compra = await orm.em.findOne(Compras, {
+      id_compra: +id_compra,
+      fk_id_usuario: userId,
+    });
+
+    if (!compra) {
+      return res
+        .status(404)
+        .json({ message: "Compra no encontrada o no pertenece al usuario." });
+    }
+
+    // Obtenemos las entradas y populamos las relaciones necesarias
+    const entradas = await orm.em.getRepository(Entradas).find(
+      { fk_id_compra: +id_compra },
+      {
+        populate: [
+          "fk_id_evento.fk_id_club_local",
+          "fk_id_evento.fk_id_club_visitante",
+        ],
+      }
+    );
+
+    // Aplanamos la data como en tu consulta original
+    const dataAplanada = entradas.map((e) => ({
+      id_entrada: e.id_entrada,
+      codigo_qr: e.codigo_qr,
+      nombre_local: e.fk_id_evento.fk_id_club_local.nombre,
+      nombre_visitante: e.fk_id_evento.fk_id_club_visitante.nombre,
+    }));
+
+    res.status(200).json(dataAplanada);
+  } catch (error: any) {
+    console.error("Error detallado al obtener entradas:", error);
+    res.status(500).json({
+      message: "Error al obtener las entradas.",
+      error: error.message,
+    });
+  }
 };
