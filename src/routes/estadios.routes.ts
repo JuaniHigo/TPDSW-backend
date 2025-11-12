@@ -1,20 +1,25 @@
-import { Router } from 'express';
-import { isAuth } from '../middlewares/auth.middleware';
-import { isAdmin } from '../middlewares/isAdmin.middleware';
+import { Router } from "express";
 import {
-    getAllEstadios,
-    getEstadioById,
-    createEstadio,
-    updateEstadio,
-    deleteEstadio
-} from '../controllers/estadios.controller';
+  getAllEstadios,
+  getEstadioById,
+  createEstadio,
+  updateEstadio,
+  deleteEstadio,
+} from "../controllers/estadios.controller";
+
+// Importamos los dos middlewares
+import { isAuth } from "../middlewares/auth.middleware";
+import { isAdmin } from "../middlewares/isAdmin.middleware";
 
 const router = Router();
 
-router.get('/', getAllEstadios);
-router.get('/:id', getEstadioById);
-router.post('/',isAdmin, isAuth, createEstadio);
-router.put('/:id',isAdmin, isAuth, updateEstadio);
-router.delete('/:id',isAdmin, isAuth, deleteEstadio);
+// --- Rutas Públicas ---
+router.get("/", getAllEstadios);
+router.get("/:id", getEstadioById);
+
+// --- Rutas de Administrador ---
+router.post("/", [isAuth, isAdmin], createEstadio);
+router.put("/:id", [isAuth, isAdmin], updateEstadio);
+router.delete("/:id", [isAuth, isAdmin], deleteEstadio);
 
 export default router;

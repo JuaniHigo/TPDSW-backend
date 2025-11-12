@@ -1,7 +1,9 @@
 import { Request, Response } from "express";
-import { orm } from "../app";
-import { Estadios } from "../entities/Estadios";
-import { QueryOrder, wrap } from "@mikro-orm/core";
+// ⛔ ERROR: No importamos 'orm'
+// ✅ CORRECTO: Importamos RequestContext
+import { QueryOrder, RequestContext, wrap } from "@mikro-orm/core";
+// ✅ CORRECTO: Usamos el nombre de la clase en SINGULAR
+import { Estadio } from "../entities/Estadio";
 
 // Obtener todos los estadios con paginación
 export const getAllEstadios = async (
@@ -9,11 +11,14 @@ export const getAllEstadios = async (
   res: Response
 ): Promise<void> => {
   try {
+    // ✅ OBTENEMOS 'em' DEL CONTEXTO
+    const em = RequestContext.getEntityManager()!;
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
     const offset = (page - 1) * limit;
 
-    const [estadios, total] = await orm.em.getRepository(Estadios).findAndCount(
+    // ✅ Usamos 'em' y 'Estadio'
+    const [estadios, total] = await em.getRepository(Estadio).findAndCount(
       {},
       {
         orderBy: { nombre: QueryOrder.ASC },
@@ -32,6 +37,7 @@ export const getAllEstadios = async (
       },
     });
   } catch (error: any) {
+    console.error("Error en getAllEstadios:", error);
     res
       .status(500)
       .json({ message: "Error interno del servidor", error: error.message });
@@ -45,13 +51,18 @@ export const getEstadioById = async (
 ): Promise<void> => {
   const { id } = req.params;
   try {
-    const estadio = await orm.em.getRepository(Estadios).findOne(+id);
+    // ✅ OBTENEMOS 'em' DEL CONTEXTO
+    const em = RequestContext.getEntityManager()!;
+    // ✅ Usamos 'em' y 'Estadio'
+    const estadio = await em.getRepository(Estadio).findOne(+id);
+
     if (!estadio) {
       res.status(404).json({ message: "Estadio no encontrado" });
       return;
     }
     res.status(200).json(estadio);
   } catch (error: any) {
+    console.error(`Error en getEstadioById (id: ${id}):`, error);
     res
       .status(500)
       .json({ message: "Error interno del servidor", error: error.message });
@@ -64,10 +75,15 @@ export const createEstadio = async (
   res: Response
 ): Promise<void> => {
   try {
-    const newEstadio = orm.em.create(Estadios, req.body);
-    await orm.em.flush();
+    // ✅ OBTENEMOS 'em' DEL CONTEXTO
+    const em = RequestContext.getEntityManager()!;
+    // ✅ Usamos 'em' y 'Estadio'
+    const newEstadio = em.create(Estadio, req.body);
+    // ✅ Usamos 'em'
+    await em.flush();
     res.status(201).json(newEstadio);
   } catch (error: any) {
+    console.error("Error en createEstadio:", error);
     res
       .status(500)
       .json({ message: "Error interno del servidor", error: error.message });
@@ -81,7 +97,11 @@ export const updateEstadio = async (
 ): Promise<void> => {
   const { id } = req.params;
   try {
-    const estadio = await orm.em.getRepository(Estadios).findOne(+id);
+    // ✅ OBTENEMOS 'em' DEL CONTEXTO
+    const em = RequestContext.getEntityManager()!;
+    // ✅ Usamos 'em' y 'Estadio'
+    const estadio = await em.getRepository(Estadio).findOne(+id);
+
     if (!estadio) {
       res
         .status(404)
@@ -90,10 +110,12 @@ export const updateEstadio = async (
     }
 
     wrap(estadio).assign(req.body);
-    await orm.em.flush();
+    // ✅ Usamos 'em'
+    await em.flush();
 
     res.status(200).json({ message: "Estadio actualizado correctamente" });
   } catch (error: any) {
+    console.error(`Error en updateEstadio (id: ${id}):`, error);
     res
       .status(500)
       .json({ message: "Error interno del servidor", error: error.message });
@@ -107,13 +129,18 @@ export const deleteEstadio = async (
 ): Promise<void> => {
   const { id } = req.params;
   try {
-    const result = await orm.em.getRepository(Estadios).nativeDelete(+id);
+    // ✅ OBTENEMOS 'em' DEL CONTEXTO
+    const em = RequestContext.getEntityManager()!;
+    // ✅ Usamos 'em' y 'Estadio'
+    const result = await em.getRepository(Estadio).nativeDelete(+id);
+
     if (result === 0) {
       res.status(404).json({ message: "Estadio no encontrado para eliminar" });
       return;
     }
     res.status(200).json({ message: "Estadio eliminado correctamente" });
   } catch (error: any) {
+    console.error(`Error en deleteEstadio (id: ${id}):`, error);
     res
       .status(500)
       .json({ message: "Error interno del servidor", error: error.message });

@@ -1,12 +1,26 @@
-import { Router } from 'express';
-import { crearPreferenciaMercadoPago, recibirConfirmacionPago, getEntradasPorCompra, procesarPagoTarjeta } from '../controllers/pagos.controller';
-import { isAuth } from '../middlewares/auth.middleware';
+import { Router } from "express";
+import {
+  crearPreferenciaMercadoPago,
+  procesarPagoTarjeta,
+  recibirConfirmacionPago,
+  getEntradasPorCompra,
+} from "../controllers/pagos.controller";
+
+// Importamos SOLO 'isAuth', porque un USER puede comprar
+import { isAuth } from "../middlewares/auth.middleware";
 
 const router = Router();
 
-router.post('/crear-preferencia-mp', isAuth, crearPreferenciaMercadoPago);
-router.post('/procesar-tarjeta', isAuth, procesarPagoTarjeta); // <-- NUEVA RUTA
-router.post('/webhook-mp', recibirConfirmacionPago);
-router.get('/compras/:id_compra/entradas', isAuth, getEntradasPorCompra);
+// --- Rutas de Usuario (necesita estar logueado) ---
+router.post(
+  "/crear-preferencia",
+  [isAuth],
+  crearPreferenciaMercadoPago
+);
+router.post("/procesar-tarjeta", [isAuth], procesarPagoTarjeta);
+router.get("/entradas/:id_compra", [isAuth], getEntradasPorCompra);
+
+// --- Ruta Pública (para el Webhook de Mercado Pago) ---
+router.post("/webhook", recibirConfirmacionPago);
 
 export default router;

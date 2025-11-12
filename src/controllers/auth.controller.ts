@@ -1,13 +1,23 @@
 import { Request, Response } from "express";
-import { orm } from "../app";
-import { Usuarios } from "../entities/Usuarios";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+
+// ⛔ CAMBIO 1: No importamos 'orm' desde 'app'.
+// Importamos RequestContext para OBTENER el 'em'
+import { RequestContext } from "@mikro-orm/core";
+
+// ⛔ CAMBIO 2: Importamos la clase 'Usuario' (singular)
+import { Usuario } from "../entities/Usuario";
 
 export const register = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
+  // ⛔ CAMBIO 3: Obtenemos el EntityManager (em) del contexto
+  // El '!' al final es para decirle a TS "confía en mí, esto existe"
+  // (Existe porque nuestro middleware en app.ts lo garantiza)
+  const em = RequestContext.getEntityManager()!;
+
   try {
     const { password, ...userData } = req.body;
 
@@ -18,13 +28,17 @@ export const register = async (
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    const newUser = orm.em.create(Usuarios, {
+    // ⛔ CAMBIO 4: Usamos 'em' (del RequestContext) en lugar de 'orm.em'
+    // ⛔ CAMBIO 5: Usamos 'Usuario' (singular)
+    // ⛔ CAMBIO 6: Corregimos 'fecha_nacimiento' a 'fechaNacimiento'
+    const newUser = em.create(Usuario, {
       ...userData,
       password: hashedPassword,
-      fecha_nacimiento: userData.fecha_nacimiento || null,
+      fechaNacimiento: userData.fechaNacimiento || null, // DEBE ser camelCase
     });
 
-    await orm.em.flush();
+    // ⛔ CAMBIO 7: Usamos 'em' (del RequestContext)
+    await em.flush();
 
     return res
       .status(201)
@@ -38,21 +52,26 @@ export const register = async (
         .status(409)
         .json({ message: "El DNI o Email ya están registrados." });
     } else {
+      console.error("Error en register:", error); // Es buena idea loguear el error
       return res
         .status(500)
         .json({ message: "Error en el servidor", error: error.message });
     }
   }
-  return res.status(500).json({ message: "Error desconocido en el registro." });
+  // ⛔ CAMBIO 8: Eliminamos el 'return' final que era inalcanzable.
 };
 
 export const login = async (req: Request, res: Response): Promise<Response> => {
+  // ⛔ CAMBIO 9: Obtenemos el 'em' también aquí
+  const em = RequestContext.getEntityManager()!;
+
   try {
     const { email, password } = req.body;
     console.log("--- Nuevo Intento de Login ---");
 
     // 1. Buscar al usuario por email
-    const user = await orm.em.getRepository(Usuarios).findOne({ email });
+    // ⛔ CAMBIO 10: Usamos 'em' y 'Usuario' (singular)
+    const user = await em.getRepository(Usuario).findOne({ email });
 
     if (!user) {
       console.log("RESULTADO: Usuario no encontrado en la BD.");
@@ -70,9 +89,17 @@ export const login = async (req: Request, res: Response): Promise<Response> => {
     const payload = {
       idUsuario: user.idUsuario,
       email: user.email,
-      rol: (user as any).rol, // Asumiendo que 'rol' existe, aunque no está en tu SQL
+      rol: user.rol, // Ya no es 'any' porque usamos la clase correcta
     };
-    const token = jwt.sign(payload, process.env.JWT_SECRET as string, {
+
+    // Es mejor mover el secret a una variable de entorno (.env)
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      console.error("Error crítico: JWT_SECRET no está definido en .env");
+      return res.status(500).json({ message: "Error de configuración del servidor." });
+    }
+
+    const token = jwt.sign(payload, jwtSecret, {
       expiresIn: "1h",
     });
 

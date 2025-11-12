@@ -7,7 +7,7 @@ import {
 } from "@mikro-orm/core";
 
 @Entity()
-export class Usuarios {
+export class Usuario {
   [PrimaryKeyProp]?: "idUsuario";
 
   @PrimaryKey({ unsigned: false })

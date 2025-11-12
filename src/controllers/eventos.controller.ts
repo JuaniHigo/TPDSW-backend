@@ -1,7 +1,9 @@
 import { Request, Response } from "express";
-import { orm } from "../app";
-import { Eventos } from "../entities/Eventos";
-import { QueryOrder, wrap } from "@mikro-orm/core";
+// ⛔ ERROR: No importamos 'orm'
+// ✅ CORRECTO: Importamos RequestContext
+import { QueryOrder, RequestContext, wrap } from "@mikro-orm/core";
+// ✅ CORRECTO: Usamos el nombre de la clase en SINGULAR
+import { Evento } from "../entities/Evento";
 
 // Obtener todos los eventos con detalle y paginación
 export const getAllEventos = async (
@@ -9,12 +11,15 @@ export const getAllEventos = async (
   res: Response
 ): Promise<void> => {
   try {
+    // ✅ OBTENEMOS 'em' DEL CONTEXTO
+    const em = RequestContext.getEntityManager()!;
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
     const offset = (page - 1) * limit;
 
     // Usamos 'populate' para cargar las relaciones (como un JOIN)
-    const [eventos, total] = await orm.em.getRepository(Eventos).findAndCount(
+    // ✅ Usamos 'em' y 'Evento'
+    const [eventos, total] = await em.getRepository(Evento).findAndCount(
       {},
       {
         populate: ["fkIdClubLocal", "fkIdClubVisitante", "fkIdEstadio"],
@@ -26,6 +31,8 @@ export const getAllEventos = async (
 
     // MikroORM devuelve las entidades anidadas.
     // Si quieres aplanar la respuesta como antes, puedes usar .map()
+    // ❗ NOTA: Asegúrate que los nombres de las propiedades (ej. 'fkIdClubLocal')
+    // coincidan con los de tu entidad 'Evento' (singular)
     const dataAplanada = eventos.map((e) => ({
       id_evento: e.idEvento,
       fecha_hora: e.fechaHora,
@@ -48,6 +55,7 @@ export const getAllEventos = async (
       },
     });
   } catch (error: any) {
+    console.error("Error en getAllEventos:", error);
     res
       .status(500)
       .json({ message: "Error interno del servidor", error: error.message });
@@ -61,7 +69,10 @@ export const getEventoById = async (
 ): Promise<void> => {
   const { id } = req.params;
   try {
-    const evento = await orm.em.getRepository(Eventos).findOne(+id, {
+    // ✅ OBTENEMOS 'em' DEL CONTEXTO
+    const em = RequestContext.getEntityManager()!;
+    // ✅ Usamos 'em' y 'Evento'
+    const evento = await em.getRepository(Evento).findOne(+id, {
       populate: ["fkIdClubLocal", "fkIdClubVisitante", "fkIdEstadio"],
     });
 
@@ -82,6 +93,7 @@ export const getEventoById = async (
     };
     res.status(200).json(dataAplanada);
   } catch (error: any) {
+    console.error(`Error en getEventoById (id: ${id}):`, error);
     res
       .status(500)
       .json({ message: "Error interno del servidor", error: error.message });
@@ -94,10 +106,15 @@ export const createEvento = async (
   res: Response
 ): Promise<void> => {
   try {
-    const newEvento = orm.em.create(Eventos, req.body);
-    await orm.em.flush();
+    // ✅ OBTENEMOS 'em' DEL CONTEXTO
+    const em = RequestContext.getEntityManager()!;
+    // ✅ Usamos 'em' y 'Evento'
+    const newEvento = em.create(Evento, req.body);
+    // ✅ Usamos 'em'
+    await em.flush();
     res.status(201).json(newEvento);
   } catch (error: any) {
+    console.error("Error en createEvento:", error);
     res
       .status(500)
       .json({ message: "Error interno del servidor", error: error.message });
@@ -111,17 +128,23 @@ export const updateEvento = async (
 ): Promise<void> => {
   const { id } = req.params;
   try {
-    const evento = await orm.em.getRepository(Eventos).findOne(+id);
+    // ✅ OBTENEMOS 'em' DEL CONTEXTO
+    const em = RequestContext.getEntityManager()!;
+    // ✅ Usamos 'em' y 'Evento'
+    const evento = await em.getRepository(Evento).findOne(+id);
+
     if (!evento) {
       res.status(404).json({ message: "Evento no encontrado para actualizar" });
       return;
     }
 
     wrap(evento).assign(req.body);
-    await orm.em.flush();
+    // ✅ Usamos 'em'
+    await em.flush();
 
     res.status(200).json({ message: "Evento actualizado correctamente" });
   } catch (error: any) {
+    console.error(`Error en updateEvento (id: ${id}):`, error);
     res
       .status(500)
       .json({ message: "Error interno del servidor", error: error.message });
@@ -135,13 +158,18 @@ export const deleteEvento = async (
 ): Promise<void> => {
   const { id } = req.params;
   try {
-    const result = await orm.em.getRepository(Eventos).nativeDelete(+id);
+    // ✅ OBTENEMOS 'em' DEL CONTEXTO
+    const em = RequestContext.getEntityManager()!;
+    // ✅ Usamos 'em' y 'Evento'
+    const result = await em.getRepository(Evento).nativeDelete(+id);
+
     if (result === 0) {
       res.status(404).json({ message: "Evento no encontrado para eliminar" });
       return;
     }
     res.status(200).json({ message: "Evento eliminado correctamente" });
   } catch (error: any) {
+    console.error(`Error en deleteEvento (id: ${id}):`, error);
     res
       .status(500)
       .json({ message: "Error interno del servidor", error: error.message });

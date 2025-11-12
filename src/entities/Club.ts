@@ -1,7 +1,7 @@
 import { Entity, PrimaryKey, PrimaryKeyProp, Property } from '@mikro-orm/core';
 
 @Entity()
-export class Clubes {
+export class Club {
 
   [PrimaryKeyProp]?: 'idClub';
 
