@@ -110,6 +110,7 @@ export const createEvento = async (
     const em = RequestContext.getEntityManager()!;
     // ✅ Usamos 'em' y 'Evento'
     const newEvento = em.create(Evento, req.body);
+    await em.persistAndFlush(newEvento);
     // ✅ Usamos 'em'
     await em.flush();
     res.status(201).json(newEvento);
