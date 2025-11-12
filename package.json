@@ -19,6 +19,7 @@
     "@mikro-orm/mysql": "6.5.9",
     "@mikro-orm/reflection": "^6.5.9",
     "@mikro-orm/sql-highlighter": "1.0.1",
+    "@mikro-orm/sqlite": "^6.5.9",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.2",
     "compression": "^1.8.1",
@@ -32,6 +33,7 @@
     "passport-jwt": "^4.0.1",
     "qrcode": "^1.5.4",
     "reflect-metadata": "0.2.2",
+    "sqlite3": "^5.1.7",
     "uuid": "^11.1.0",
     "zod": "^4.0.13"
   },

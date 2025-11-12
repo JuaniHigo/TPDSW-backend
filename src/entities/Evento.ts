@@ -1,23 +1,23 @@
 import { Entity, Enum, ManyToOne, type Opt, PrimaryKey, PrimaryKeyProp, Property } from '@mikro-orm/core';
-import { Clubes } from './Clubes';
-import { Estadios } from './Estadios';
+import { Club } from './Club';
+import { Estadio } from './Estadio';
 
 @Entity()
-export class Eventos {
+export class Evento {
 
   [PrimaryKeyProp]?: 'idEvento';
 
   @PrimaryKey({ unsigned: false })
   idEvento!: number;
 
-  @ManyToOne({ entity: () => Clubes, fieldName: 'fk_id_club_local', updateRule: 'cascade', index: 'fk_Eventos_ClubLocal_idx' })
-  fkIdClubLocal!: Clubes;
+  @ManyToOne({ entity: () => Club, fieldName: 'fk_id_club_local', updateRule: 'cascade', index: 'fk_Eventos_ClubLocal_idx' })
+  fkIdClubLocal!: Club;
 
-  @ManyToOne({ entity: () => Clubes, fieldName: 'fk_id_club_visitante', updateRule: 'cascade', index: 'fk_Eventos_ClubVisitante_idx' })
-  fkIdClubVisitante!: Clubes;
+  @ManyToOne({ entity: () => Club, fieldName: 'fk_id_club_visitante', updateRule: 'cascade', index: 'fk_Eventos_ClubVisitante_idx' })
+  fkIdClubVisitante!: Club;
 
-  @ManyToOne({ entity: () => Estadios, updateRule: 'cascade', index: 'fk_Eventos_Estadios_idx' })
-  fkIdEstadio!: Estadios;
+  @ManyToOne({ entity: () => Estadio, updateRule: 'cascade', index: 'fk_Eventos_Estadios_idx' })
+  fkIdEstadio!: Estadio;
 
   @Property()
   fechaHora!: Date;

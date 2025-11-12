@@ -1,14 +1,19 @@
 import { Request, Response } from "express";
 import { MercadoPagoConfig, Preference, Payment } from "mercadopago";
-import { orm } from "../app";
-import { PreciosEventoSector } from "../entities/PreciosEventoSector";
-import { Compras } from "../entities/Compras";
-import { Entradas } from "../entities/Entradas";
-import { Eventos } from "../entities/Eventos";
-import { Usuarios } from "../entities/Usuarios";
-
 import dotenv from "dotenv";
 import QRCode from "qrcode";
+
+// ✅ CAMBIO 1: Importamos 'orm' (que ahora sí se exporta) y RequestContext
+import { orm } from "../app";
+import { EntityManager, RequestContext } from "@mikro-orm/core";
+
+// ✅ CAMBIO 2: Usamos TODOS los nombres de entidad en SINGULAR
+import { PrecioEventoSector } from "../entities/PrecioEventoSector";
+import { Compra } from "../entities/Compra";
+import { Entrada } from "../entities/Entrada";
+import { Evento } from "../entities/Evento"; 
+import { Usuario } from "../entities/Usuario"; 
+import { Sector } from "../entities/Sector";
 
 dotenv.config();
 
@@ -16,30 +21,30 @@ const client = new MercadoPagoConfig({
   accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN!,
 });
 
-// Función para generar entradas (la usaremos en MP y Tarjeta)
+// ✅ CAMBIO 3: Tipamos 'em' correctamente y usamos camelCase/Singular
 async function generarEntradas(
-  em: typeof orm.em,
-  id_compra: number,
+  em: EntityManager, // Tipo correcto
+  idCompra: number,
   eventoId: number,
   sectorId: number,
   quantity: number
 ) {
   for (let i = 0; i < quantity; i++) {
     // Creamos la entrada
-    const nuevaEntrada = em.create(Entradas, {
-      fk_id_compra: id_compra,
-      fk_id_evento: eventoId,
-      fk_id_sector: sectorId,
-      codigo_qr: "generating...", // QR temporal
+    const nuevaEntrada = em.create(Entrada, {
+      fkIdCompra: idCompra, // camelCase
+      fkIdEvento: eventoId, // camelCase
+      fkIdSector: em.getReference(Sector, sectorId),
+      codigoQr: "generating...", // camelCase
     });
 
-    await em.flush(); // Guardamos para obtener el ID de la entrada
+    await em.flush(); // Guardamos para obtener el ID
 
     // Generamos el QR con el ID real
     const qrData = JSON.stringify({
-      entradaId: nuevaEntrada.id_entrada,
+      entradaId: nuevaEntrada.idEntrada, // camelCase
       eventoId,
-      compraId: id_compra,
+      compraId: idCompra,
     });
     nuevaEntrada.codigoQr = await QRCode.toDataURL(qrData);
 
@@ -52,7 +57,8 @@ export const crearPreferenciaMercadoPago = async (
   req: Request,
   res: Response
 ) => {
-  const userId = (req.user as any)?.id_usuario;
+  // ✅ CAMBIO 4: Usamos 'idUsuario' (camelCase)
+  const userId = (req.user as any)?.idUsuario;
   if (!userId) {
     return res.status(401).json({ message: "Usuario no autenticado." });
   }
@@ -64,65 +70,67 @@ export const crearPreferenciaMercadoPago = async (
       .json({ message: "Faltan datos (evento, sector, cantidad)." });
   }
 
+  // ✅ CAMBIO 5: Usamos RequestContext para esta ruta de usuario
+  const em = RequestContext.getEntityManager()!;
+
   try {
-    const { preferenceId, id_compra } = await orm.em.transactional(
-      async (em) => {
-        // 1. Obtener precio
-        const precioData = await em.findOne(PreciosEventoSector, {
-          fk_id_evento: eventoId,
-          fk_id_sector: sectorId,
-        });
-        if (!precioData) {
-          throw new Error("Precio no encontrado para el sector y evento.");
-        }
-        const monto_total = precioData.precio * Number(quantity);
-
-        // 2. Crear la Compra
-        const nuevaCompra = em.create(Compras, {
-          fk_id_usuario: userId,
-          monto_total,
-          metodo_pago: "mercadopago",
-          estado_pago: "pendiente",
-          // fecha_compra se inserta por DEFAULT
-        });
-        await em.flush(); // Guardamos para obtener el ID de compra
-
-        const id_compra = nuevaCompra.id_compra;
-
-        // 3. Crear Preferencia de MP
-        const preference = new Preference(client);
-        const preferenceResult = await preference.create({
-          body: {
-            items: [
-              {
-                id: `evento-${eventoId}-sector-${sectorId}`,
-                title: `Entrada Evento #${eventoId}`,
-                description: `Entrada para el sector #${sectorId}`,
-                quantity: Number(quantity),
-                unit_price: Number(precioData.precio),
-                currency_id: "ARS",
-              },
-            ],
-            back_urls: {
-              success: `${process.env.FRONTEND_URL}/compra-exitosa`,
-              failure: `${process.env.FRONTEND_URL}/compra-fallida`,
-            },
-            auto_return: "approved",
-            external_reference: id_compra.toString(),
-            // Guardamos esto para el webhook
-            metadata: { eventoId, sectorId, quantity: Number(quantity) },
-          },
-        });
-
-        // 4. Actualizar Compra con ID de preferencia
-        nuevaCompra.id_preferencia_mp = preferenceResult.id;
-        await em.flush();
-
-        return { preferenceId: preferenceResult.id, id_compra };
+    // ✅ Usamos 'em.transactional'
+    const { preferenceId, idCompra } = await em.transactional(async (txEm) => {
+      // 1. Obtener precio
+      // ✅ Usamos txEm, Singular y camelCase
+      const precioData = await txEm.findOne(PrecioEventoSector, {
+        fkIdEvento: eventoId,
+        fkIdSector: sectorId,
+      });
+      if (!precioData) {
+        throw new Error("Precio no encontrado para el sector y evento.");
       }
-    );
+      const montoTotal = Number(precioData.precio) * Number(quantity);
 
-    res.status(201).json({ preferenceId });
+      // 2. Crear la Compra
+      // ✅ Usamos txEm, Singular y camelCase
+      const nuevaCompra = txEm.create(Compra, {
+        fkUsuario: userId,
+        montoTotal: montoTotal.toString(), // Aseguramos que sea string si el tipo es decimal
+        metodoPago: "mercadopago",
+        estadoPago: "pendiente",
+      });
+      await txEm.flush(); // Guardamos para obtener el ID
+
+      const idCompra = nuevaCompra.idCompra; // camelCase
+
+      // 3. Crear Preferencia de MP
+      const preference = new Preference(client);
+      const preferenceResult = await preference.create({
+        body: {
+          items: [
+            {
+              id: `evento-${eventoId}-sector-${sectorId}`,
+              title: `Entrada Evento #${eventoId}`,
+              description: `Entrada para el sector #${sectorId}`,
+              quantity: Number(quantity),
+              unit_price: Number(precioData.precio),
+              currency_id: "ARS",
+            },
+          ],
+          back_urls: {
+            success: `${process.env.FRONTEND_URL}/compra-exitosa`,
+            failure: `${process.env.FRONTEND_URL}/compra-fallida`,
+          },
+          auto_return: "approved",
+          external_reference: idCompra.toString(), // camelCase
+          metadata: { eventoId, sectorId, quantity: Number(quantity) },
+        },
+      });
+
+      // 4. Actualizar Compra con ID de preferencia
+      nuevaCompra.idPreferenciaMp = preferenceResult.id; // camelCase
+      await txEm.flush();
+
+      return { preferenceId: preferenceResult.id, idCompra };
+    });
+
+    res.status(201).json({ preferenceId, idCompra }); // Devolvemos ambos
   } catch (error: any) {
     console.error("Error al crear la preferencia:", error);
     res
@@ -133,7 +141,8 @@ export const crearPreferenciaMercadoPago = async (
 
 // Procesar pagos con tarjeta (simulado)
 export const procesarPagoTarjeta = async (req: Request, res: Response) => {
-  const userId = (req.user as any)?.id_usuario;
+  // ✅ CAMBIO 6: Usamos 'idUsuario' (camelCase)
+  const userId = (req.user as any)?.idUsuario;
   if (!userId) {
     return res.status(401).json({ message: "Usuario no autenticado." });
   }
@@ -143,40 +152,45 @@ export const procesarPagoTarjeta = async (req: Request, res: Response) => {
     return res.status(400).json({ message: "Faltan datos." });
   }
 
+  // ✅ CAMBIO 7: Usamos RequestContext
+  const em = RequestContext.getEntityManager()!;
+
   try {
-    const id_compra = await orm.em.transactional(async (em) => {
+    const idCompra = await em.transactional(async (txEm) => {
       // 1. Obtener precio
-      const precioData = await em.findOne(PreciosEventoSector, {
-        fk_id_evento: eventoId,
-        fk_id_sector: sectorId,
+      // ✅ Usamos txEm, Singular y camelCase
+      const precioData = await txEm.findOne(PrecioEventoSector, {
+        fkIdEvento: eventoId,
+        fkIdSector: sectorId,
       });
       if (!precioData) {
         throw new Error("Precio no encontrado.");
       }
-      const monto_total = precioData.precio * Number(quantity);
+      const montoTotal = Number(precioData.precio) * Number(quantity);
 
       // 2. Crear la Compra
-      const nuevaCompra = em.create(Compras, {
-        fk_id_usuario: userId,
-        monto_total,
-        metodo_pago: "tarjeta",
-        estado_pago: "completada",
+      // ✅ Usamos txEm, Singular y camelCase
+      const nuevaCompra = txEm.create(Compra, {
+        fkUsuario: userId,
+        montoTotal: montoTotal.toString(),
+        metodoPago: "tarjeta",
+        estadoPago: "completada",
       });
-      await em.flush();
+      await txEm.flush();
 
       // 3. Generar Entradas
       await generarEntradas(
-        em,
-        nuevaCompra.id_compra,
+        txEm,
+        nuevaCompra.idCompra, // camelCase
         eventoId,
         sectorId,
         Number(quantity)
       );
 
-      return nuevaCompra.id_compra;
+      return nuevaCompra.idCompra; // camelCase
     });
 
-    res.status(201).json({ message: "Compra procesada con éxito.", id_compra });
+    res.status(201).json({ message: "Compra procesada con éxito.", idCompra });
   } catch (error: any) {
     console.error("Error al procesar pago con tarjeta:", error);
     res
@@ -190,7 +204,8 @@ export const recibirConfirmacionPago = async (req: Request, res: Response) => {
   const { data } = req.body;
 
   if (data && data.id) {
-    // Usamos un 'fork' del EM para un contexto aislado (¡CRÍTICO!)
+    // ✅ CAMBIO 8: Usamos 'orm.em.fork()' porque ESTO NO TIENE REQUEST CONTEXT
+    // Esto funciona gracias al cambio que hicimos en app.ts
     const em = orm.em.fork();
 
     try {
@@ -202,19 +217,19 @@ export const recibirConfirmacionPago = async (req: Request, res: Response) => {
         paymentInfo.status === "approved" &&
         paymentInfo.external_reference
       ) {
-        const id_compra = parseInt(paymentInfo.external_reference);
+        const idCompra = parseInt(paymentInfo.external_reference); // camelCase
 
         await em.transactional(async (txEm) => {
-          const compra = await txEm.findOne(Compras, { id_compra });
+          // ✅ Usamos txEm, Singular y camelCase
+          const compra = await txEm.findOne(Compra, { idCompra });
 
-          if (!compra || compra.estado_pago === "completada") {
-            // Si no existe o ya fue procesada, salimos
-            return;
+          if (!compra || compra.estadoPago === "completada") { // camelCase
+            return; // Ya fue procesada
           }
 
           // 1. Actualizar la compra
-          compra.estado_pago = "completada";
-          compra.id_pago_mp = paymentInfo.id?.toString();
+          compra.estadoPago = "completada"; // camelCase
+          compra.idPagoMp = paymentInfo.id?.toString(); // camelCase
 
           // 2. Obtener datos para crear entradas (desde metadata)
           const { eventoId, sectorId, quantity } = paymentInfo.metadata;
@@ -223,7 +238,7 @@ export const recibirConfirmacionPago = async (req: Request, res: Response) => {
             // 3. Generar Entradas
             await generarEntradas(
               txEm,
-              id_compra,
+              idCompra,
               eventoId,
               sectorId,
               quantity
@@ -237,19 +252,24 @@ export const recibirConfirmacionPago = async (req: Request, res: Response) => {
       console.error("Error en el webhook de Mercado Pago:", error);
     }
   }
-  res.status(200).send("OK");
+  res.status(200).send("OK"); // Siempre responder 200 a MP
 };
 
 // Obtener entradas por compra
 export const getEntradasPorCompra = async (req: Request, res: Response) => {
-  const { id_compra } = req.params;
-  const userId = (req.user as any)?.id_usuario;
+  // ✅ CAMBIO 9: Usamos camelCase
+  const { idCompra } = req.params; 
+  const userId = (req.user as any)?.idUsuario;
+
+  // ✅ CAMBIO 10: Usamos RequestContext
+  const em = RequestContext.getEntityManager()!;
 
   try {
     // Verificamos que la compra pertenezca al usuario
-    const compra = await orm.em.findOne(Compras, {
-      id_compra: +id_compra,
-      fk_id_usuario: userId,
+    // ✅ Usamos em, Singular y camelCase
+    const compra = await em.findOne(Compra, {
+      idCompra: +idCompra,
+      fkUsuario: userId,
     });
 
     if (!compra) {
@@ -259,22 +279,23 @@ export const getEntradasPorCompra = async (req: Request, res: Response) => {
     }
 
     // Obtenemos las entradas y populamos las relaciones necesarias
-    const entradas = await orm.em.getRepository(Entradas).find(
-      { fk_id_compra: +id_compra },
+    // ✅ Usamos em, Singular y camelCase
+    const entradas = await em.getRepository(Entrada).find(
+      { fkIdCompra: +idCompra },
       {
         populate: [
-          "fk_id_evento.fk_id_club_local",
-          "fk_id_evento.fk_id_club_visitante",
+          "fkIdEvento.fkIdClubLocal", // camelCase
+          "fkIdEvento.fkIdClubVisitante", // camelCase
         ],
       }
     );
 
-    // Aplanamos la data como en tu consulta original
+    // Aplanamos la data
     const dataAplanada = entradas.map((e) => ({
-      id_entrada: e.id_entrada,
-      codigo_qr: e.codigo_qr,
-      nombre_local: e.fk_id_evento.fk_id_club_local.nombre,
-      nombre_visitante: e.fk_id_evento.fk_id_club_visitante.nombre,
+      idEntrada: e.idEntrada, // camelCase
+      codigoQr: e.codigoQr, // camelCase
+      nombreLocal: e.fkIdEvento.fkIdClubLocal.nombre, // camelCase
+      nombreVisitante: e.fkIdEvento.fkIdClubVisitante.nombre, // camelCase
     }));
 
     res.status(200).json(dataAplanada);

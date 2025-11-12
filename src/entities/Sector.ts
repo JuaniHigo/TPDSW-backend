@@ -1,16 +1,16 @@
 import { Entity, ManyToOne, PrimaryKey, PrimaryKeyProp, Property } from '@mikro-orm/core';
-import { Estadios } from './Estadios';
+import { Estadio } from './Estadio';
 
 @Entity()
-export class Sectores {
+export class Sector {
 
-  [PrimaryKeyProp]?: ['idSector', 'fk'];
+  [PrimaryKeyProp]?: 'idSector';
 
   @PrimaryKey({ unsigned: false, autoincrement: true })
   idSector!: number;
 
-  @ManyToOne({ entity: () => Estadios, updateRule: 'cascade', primary: true, index: 'fk_Sectores_Estadios_idx' })
-  fkIdEstadio!: Estadios;
+  @ManyToOne({ entity: () => Estadio, updateRule: 'cascade',  index: 'fk_Sectores_Estadios_idx' })
+  fkIdEstadio!: Estadio;
 
   @Property({ length: 100 })
   nombreSector!: string;

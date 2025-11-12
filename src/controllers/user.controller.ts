@@ -1,18 +1,14 @@
-// src/controllers/user.controller.ts
 import { Request, Response } from "express";
-import { orm } from "../app"; // Importamos el ORM desde app.ts
-import { Usuarios } from "../entities/Usuarios"; // Importamos la NUEVA entidad
-
-// Ya no importamos 'pool' ni la interfaz 'User'
+import { RequestContext, wrap } from "@mikro-orm/core";
+import { Usuario } from "../entities/Usuario";
 
 export const getAllUsers = async (
   req: Request,
   res: Response
 ): Promise<void> => {
+  const em = RequestContext.getEntityManager()!;
   try {
-    const usuarios = await orm.em.getRepository(Usuarios).findAll({
-      // Es buena práctica seleccionar solo los campos que necesitas
-      // y excluir la contraseña
+    const usuarios = await em.getRepository(Usuario).findAll({
       fields: [
         "idUsuario",
         "dni",
@@ -34,9 +30,10 @@ export const getUserById = async (
   req: Request,
   res: Response
 ): Promise<void> => {
+  const em = RequestContext.getEntityManager()!;
   try {
     const { id } = req.params;
-    const usuario = await orm.em.getRepository(Usuarios).findOne(+id, {
+    const usuario = await em.getRepository(Usuario).findOne(+id, {
       fields: [
         "idUsuario",
         "dni",
@@ -63,13 +60,13 @@ export const updateUser = async (
   req: Request,
   res: Response
 ): Promise<void> => {
+  const em = RequestContext.getEntityManager()!;
   try {
     const { id } = req.params;
-    // Tu lógica anterior solo actualizaba nombre y apellido
-    const { nombre, apellido } = req.body;
+    // Excluimos campos sensibles que no deberían actualizarse por esta vía
+    const { password, rol, ...updateData } = req.body;
 
-    // 1. Buscamos al usuario
-    const usuario = await orm.em.getRepository(Usuarios).findOne(+id);
+    const usuario = await em.getRepository(Usuario).findOne(+id);
 
     if (!usuario) {
       res
@@ -78,16 +75,9 @@ export const updateUser = async (
       return;
     }
 
-    // 2. Modificamos la entidad (MikroORM rastrea los cambios)
-    if (nombre) {
-      usuario.nombre = nombre;
-    }
-    if (apellido) {
-      usuario.apellido = apellido;
-    }
-
-    // 3. Guardamos los cambios en la base de datos
-    await orm.em.flush();
+    // Usamos wrap().assign() para actualizar la data
+    wrap(usuario).assign(updateData);
+    await em.flush();
 
     res.status(200).json({ message: "Usuario actualizado" });
   } catch (error: any) {
@@ -101,17 +91,15 @@ export const deleteUser = async (
   req: Request,
   res: Response
 ): Promise<void> => {
+  const em = RequestContext.getEntityManager()!;
   try {
     const { id } = req.params;
-
-    // 'nativeDelete' es más eficiente, es como un 'DELETE FROM ...' directo
-    const result = await orm.em.getRepository(Usuarios).nativeDelete(+id);
+    const result = await em.getRepository(Usuario).nativeDelete(+id);
 
     if (result === 0) {
       res.status(404).json({ message: "Usuario no encontrado para eliminar" });
       return;
     }
-
     res.status(200).json({ message: "Usuario eliminado" });
   } catch (error: any) {
     res

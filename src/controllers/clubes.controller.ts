@@ -1,18 +1,23 @@
 import { Request, Response } from "express";
-import { orm } from "../app"; // Importamos el ORM desde app.ts
-import { Clubes } from "../entities/Clubes";
-import { QueryOrder, wrap } from "@mikro-orm/core";
+// ⛔ ERROR: No importamos 'orm'
+// ✅ CORRECTO: Importamos RequestContext
+import { QueryOrder, RequestContext, wrap } from "@mikro-orm/core";
+// ✅ CORRECTO: Usamos el nombre de la clase en SINGULAR
+import { Club } from "../entities/Club";
 
 export const getAllClubes = async (
   req: Request,
   res: Response
 ): Promise<void> => {
   try {
+    // ✅ OBTENEMOS 'em' DEL CONTEXTO
+    const em = RequestContext.getEntityManager()!;
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
     const offset = (page - 1) * limit;
 
-    const [clubes, total] = await orm.em.getRepository(Clubes).findAndCount(
+    // ✅ Usamos 'em' y 'Club'
+    const [clubes, total] = await em.getRepository(Club).findAndCount(
       {},
       {
         orderBy: { nombre: QueryOrder.ASC },
@@ -30,6 +35,7 @@ export const getAllClubes = async (
       },
     });
   } catch (error: any) {
+    console.error("Error en getAllClubes:", error); // Loguear error
     res
       .status(500)
       .json({ message: "Error interno del servidor", error: error.message });
@@ -43,13 +49,18 @@ export const getClubById = async (
 ): Promise<void> => {
   const { id } = req.params;
   try {
-    const club = await orm.em.getRepository(Clubes).findOne(+id);
+    // ✅ OBTENEMOS 'em' DEL CONTEXTO
+    const em = RequestContext.getEntityManager()!;
+    // ✅ Usamos 'em' y 'Club'
+    const club = await em.getRepository(Club).findOne(+id);
+
     if (!club) {
       res.status(404).json({ message: "Club no encontrado" });
       return;
     }
     res.status(200).json(club);
   } catch (error: any) {
+    console.error(`Error en getClubById (id: ${id}):`, error);
     res
       .status(500)
       .json({ message: "Error interno del servidor", error: error.message });
@@ -62,10 +73,12 @@ export const createClub = async (
   res: Response
 ): Promise<void> => {
   try {
-    // Creamos la entidad
-    const newClub = orm.em.create(Clubes, req.body);
-    // Persistimos en la base de datos
-    await orm.em.flush();
+    // ✅ OBTENEMOS 'em' DEL CONTEXTO
+    const em = RequestContext.getEntityManager()!;
+    // ✅ Usamos 'em' y 'Club'
+    const newClub = em.create(Club, req.body);
+    // ✅ Usamos 'em'
+    await em.flush();
 
     res.status(201).json(newClub);
   } catch (error: any) {
@@ -77,6 +90,7 @@ export const createClub = async (
         .status(409)
         .json({ message: "El nombre o prefijo del club ya existe." });
     } else {
+      console.error("Error en createClub:", error);
       res
         .status(500)
         .json({ message: "Error interno del servidor", error: error.message });
@@ -91,7 +105,11 @@ export const updateClub = async (
 ): Promise<void> => {
   const { id } = req.params;
   try {
-    const club = await orm.em.getRepository(Clubes).findOne(+id);
+    // ✅ OBTENEMOS 'em' DEL CONTEXTO
+    const em = RequestContext.getEntityManager()!;
+    // ✅ Usamos 'em' y 'Club'
+    const club = await em.getRepository(Club).findOne(+id);
+
     if (!club) {
       res.status(404).json({ message: "Club no encontrado para actualizar" });
       return;
@@ -99,10 +117,12 @@ export const updateClub = async (
 
     // 'wrap(club).assign(data)' actualiza la entidad de forma segura
     wrap(club).assign(req.body);
-    await orm.em.flush();
+    // ✅ Usamos 'em'
+    await em.flush();
 
     res.status(200).json({ message: "Club actualizado correctamente" });
   } catch (error: any) {
+    console.error(`Error en updateClub (id: ${id}):`, error);
     res
       .status(500)
       .json({ message: "Error interno del servidor", error: error.message });
@@ -116,14 +136,19 @@ export const deleteClub = async (
 ): Promise<void> => {
   const { id } = req.params;
   try {
+    // ✅ OBTENEMOS 'em' DEL CONTEXTO
+    const em = RequestContext.getEntityManager()!;
+    // ✅ Usamos 'em' y 'Club'
     // nativeDelete es más eficiente para borrados simples
-    const result = await orm.em.getRepository(Clubes).nativeDelete(+id);
+    const result = await em.getRepository(Club).nativeDelete(+id);
+
     if (result === 0) {
       res.status(404).json({ message: "Club no encontrado para eliminar" });
       return;
     }
     res.status(200).json({ message: "Club eliminado correctamente" });
   } catch (error: any) {
+    console.error(`Error en deleteClub (id: ${id}):`, error);
     res
       .status(500)
       .json({ message: "Error interno del servidor", error: error.message });

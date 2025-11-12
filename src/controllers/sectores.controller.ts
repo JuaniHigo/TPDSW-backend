@@ -1,19 +1,19 @@
 import { Request, Response } from "express";
-import { orm } from "../app";
-import { Sectores } from "../entities/Sectores";
-import { QueryOrder, wrap } from "@mikro-orm/core";
+import { RequestContext, QueryOrder, wrap } from "@mikro-orm/core";
+import { Sector } from "../entities/Sector";
+import { Estadio } from "../entities/Estadio";
 
-// Obtener todos los sectores con paginación
 export const getAllSectores = async (
   req: Request,
   res: Response
 ): Promise<void> => {
+  const em = RequestContext.getEntityManager()!;
   try {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
     const offset = (page - 1) * limit;
 
-    const [sectores, total] = await orm.em.getRepository(Sectores).findAndCount(
+    const [sectores, total] = await em.getRepository(Sector).findAndCount(
       {},
       {
         orderBy: { nombreSector: QueryOrder.ASC },
@@ -38,18 +38,15 @@ export const getAllSectores = async (
   }
 };
 
-//Obtener un sector por ID compuesto
+// Obtener un sector por SU ID (no por clave compuesta)
 export const getSectorById = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  const { id_sector, fk_id_estadio } = req.params;
+  const em = RequestContext.getEntityManager()!;
+  const { id } = req.params;
   try {
-    // Para claves compuestas, pasamos un objeto
-    const sector = await orm.em.getRepository(Sectores).findOne({
-      idSector: +id_sector,
-      fkIdEstadio: +fk_id_estadio,
-    });
+    const sector = await em.getRepository(Sector).findOne(+id);
 
     if (!sector) {
       res.status(404).json({ message: "Sector no encontrado" });
@@ -68,10 +65,23 @@ export const createSector = async (
   req: Request,
   res: Response
 ): Promise<void> => {
+  const em = RequestContext.getEntityManager()!;
   try {
-    // MikroORM maneja bien el 'Omit<Sector, 'id_sector'>'
-    const newSector = orm.em.create(Sectores, req.body);
-    await orm.em.flush();
+    // Para crear un sector, necesitamos el ID del estadio al que pertenece
+    const { fkIdEstadio, ...sectorData } = req.body;
+    if (!fkIdEstadio) {
+      res
+        .status(400)
+        .json({ message: "El campo 'fkIdEstadio' es obligatorio." });
+      return;
+    }
+
+    const newSector = em.create(Sector, {
+      ...sectorData,
+      fkIdEstadio: em.getReference(Estadio, fkIdEstadio),
+    });
+
+    await em.flush();
     res.status(201).json(newSector);
   } catch (error: any) {
     res
@@ -80,25 +90,25 @@ export const createSector = async (
   }
 };
 
-// Actualizar un sector
+// Actualizar un sector por SU ID
 export const updateSector = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  const { id_sector, fk_id_estadio } = req.params;
+  const em = RequestContext.getEntityManager()!;
+  const { id } = req.params;
   try {
-    const sector = await orm.em.getRepository(Sectores).findOne({
-      idSector: +id_sector,
-      fkIdEstadio: +fk_id_estadio,
-    });
+    const sector = await em.getRepository(Sector).findOne(+id);
 
     if (!sector) {
       res.status(404).json({ message: "Sector no encontrado para actualizar" });
       return;
     }
 
-    wrap(sector).assign(req.body);
-    await orm.em.flush();
+    // No permitimos cambiar el 'fkIdEstadio' fácilmente, solo el resto de la data
+    const { fkIdEstadio, ...updateData } = req.body;
+    wrap(sector).assign(updateData);
+    await em.flush();
 
     res.status(200).json({ message: "Sector actualizado correctamente" });
   } catch (error: any) {
@@ -108,17 +118,15 @@ export const updateSector = async (
   }
 };
 
-// Eliminar un sector
+// Eliminar un sector por SU ID
 export const deleteSector = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  const { id_sector, fk_id_estadio } = req.params;
+  const em = RequestContext.getEntityManager()!;
+  const { id } = req.params;
   try {
-    const result = await orm.em.getRepository(Sectores).nativeDelete({
-      idSector: +id_sector,
-      fkIdEstadio: +fk_id_estadio,
-    });
+    const result = await em.getRepository(Sector).nativeDelete(+id);
 
     if (result === 0) {
       res.status(404).json({ message: "Sector no encontrado para eliminar" });
