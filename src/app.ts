@@ -3,35 +3,34 @@ import dotenv from "dotenv";
 dotenv.config();
 
 // --- LÍNEA 2: ATRAPADORES GLOBALES ---
-process.on('uncaughtException', (err, origin) => {
-  console.error('!!!!!!!!!! EXCEPCIÓN GLOBAL NO ATRAPADA !!!!!!!!!!!');
-  console.error('Origen:', origin);
+process.on("uncaughtException", (err, origin) => {
+  console.error("!!!!!!!!!! EXCEPCIÓN GLOBAL NO ATRAPADA !!!!!!!!!!!");
+  console.error("Origen:", origin);
 
   if (err instanceof Error) {
-    console.error('Error:', err.message);
-    console.error('Stack:', err.stack);
+    console.error("Error:", err.message);
+    console.error("Stack:", err.stack);
   } else {
-    console.error('Error (Objeto Desconocido):', err);
+    console.error("Error (Objeto Desconocido):", err);
   }
-  console.error('!!!!!!!!!! FINAL DE EXCEPCIÓN !!!!!!!!!!!');
-  process.exit(1); 
+  console.error("!!!!!!!!!! FINAL DE EXCEPCIÓN !!!!!!!!!!!");
+  process.exit(1);
 });
 
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('!!!!!!!!!! PROMESA GLOBAL NO ATRAPADA !!!!!!!!!!!');
-  console.error('Razón:', reason);
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("!!!!!!!!!! PROMESA GLOBAL NO ATRAPADA !!!!!!!!!!!");
+  console.error("Razón:", reason);
 
   if (reason instanceof Error) {
-    console.error('Error:', reason.message);
-    console.error('Stack:', reason.stack);
+    console.error("Error:", reason.message);
+    console.error("Stack:", reason.stack);
   } else {
-    console.error('Razón (Objeto Desconocido):', reason);
+    console.error("Razón (Objeto Desconocido):", reason);
   }
-  console.error('!!!!!!!!!! FINAL DE PROMESA !!!!!!!!!!!');
+  console.error("!!!!!!!!!! FINAL DE PROMESA !!!!!!!!!!!");
   process.exit(1);
 });
 // --- FIN ATRAPADORES ---
-
 
 import "reflect-metadata";
 import express, { Application, Request, Response, NextFunction } from "express";
@@ -44,17 +43,18 @@ import { MySqlDriver } from "@mikro-orm/mysql"; // <-- ✅ IMPORTANTE
 let config: Options;
 try {
   // Plan A: Intentar cargar el archivo externo
-  const loaded = require("../mikro-orm.config");
+  const loaded = require("./mikro-orm.config");
   config = loaded && loaded.default ? loaded.default : loaded;
-  
+
   // Validar que el Plan A no sea basura (por si el require falla raro)
   if (!config || !config.driver) {
-    throw new Error('Configuración cargada no es válida o está vacía.');
+    throw new Error("Configuración cargada no es válida o está vacía.");
   }
-  console.log('[App] Configuración cargada desde mikro-orm.config.ts');
-  
+  console.log("[App] Configuración cargada desde mikro-orm.config.ts");
 } catch (err) {
-  console.warn('⚠️ [App] No se pudo cargar ../mikro-orm.config.ts. Usando Plan B (fallback).');
+  console.warn(
+    "⚠️ [App] No se pudo cargar ../mikro-orm.config.ts. Usando Plan B (fallback)."
+  );
   // Plan B: Fallback (con la sintaxis v6 correcta)
   config = {
     driver: MySqlDriver, // <-- ✅ ARREGLO v6
@@ -79,32 +79,31 @@ import sectoresRoutes from "./routes/sectores.routes";
 import pagoRoutes from "./routes/pago.routes";
 import preciosRoutes from "./routes/precios.routes";
 
-
 const PORT = process.env.PORT || 3000;
 export let orm: MikroORM;
 
 (async () => {
-  let app: Application; 
+  let app: Application;
 
   try {
     console.log("[App] Attempting Express init...");
-    app = express(); 
+    app = express();
     console.log("[App] Express Initialized.");
 
     // Configuramos middlewares
     app.use(compression());
     app.use(cors());
-    app.use(express.json()); 
+    app.use(express.json());
     console.log("[App] Middlewares configured.");
 
     console.log("[App] Attempting MikroORM.init()...");
     orm = await MikroORM.init(config); // <-- 'config' es Plan A o Plan B (ambos v6)
     console.log("[App] MikroORM Initialized Successfully!");
-    
+
     console.log("[App] Checking DB connection...");
     await orm.em.getConnection().execute("SELECT 1");
     console.log("[App] DB Connection Successful!");
-    
+
     // Middleware de MikroORM (con tipos)
     app.use((req: Request, res: Response, next: NextFunction) => {
       RequestContext.create(orm.em, next);
@@ -119,7 +118,7 @@ export let orm: MikroORM;
     app.use("/api/sectores", sectoresRoutes);
     app.use("/api/pagos", pagoRoutes);
     app.use("/api/precios", preciosRoutes);
-    
+
     console.log("[App] Todas las rutas han sido montadas.");
 
     // --- Manejador de 404 ---
@@ -131,9 +130,10 @@ export let orm: MikroORM;
     app.listen(PORT, () => {
       console.log(`✅✅✅ Servidor corriendo en ${PORT}.`);
     });
-
   } catch (error: any) {
-    console.error("⛔ ¡Error DURANTE la inicialización de Express/Middlewares! ⛔");
+    console.error(
+      "⛔ ¡Error DURANTE la inicialización de Express/Middlewares! ⛔"
+    );
     if (error instanceof Error) {
       console.error("Mensaje:", error.message);
       console.error("Stack:", error.stack);
@@ -142,8 +142,8 @@ export let orm: MikroORM;
     }
     process.exit(1);
   }
-
-})().catch((error) => { // Catch externo
+})().catch((error) => {
+  // Catch externo
   console.error("⛔ ¡Error fatal INESPERADO al iniciar la aplicación! ⛔");
   if (error instanceof Error) {
     console.error("Mensaje:", error.message);
