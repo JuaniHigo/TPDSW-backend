@@ -85,6 +85,11 @@ export const getEventoById = async (
     const plain = wrap(evento).toJSON();
     const dataAplanada = {
       ...plain,
+      // --- ✅ LÍNEA CORREGIDA ---
+      // Forzamos a que 'fecha_hora' sea el valor correcto de la entidad,
+      // y no lo que sea que '...plain' estaba mandando.
+      fecha_hora: evento.fechaHora,
+      // --- FIN CORRECCIÓN ---
       nombre_local: plain.fkIdClubLocal?.nombre,
       logo_local: plain.fkIdClubLocal?.logoUrl,
       nombre_visitante: plain.fkIdClubVisitante?.nombre,
