@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
-import { RequestContext, wrap } from "@mikro-orm/core";
+import { QueryOrder, RequestContext, wrap } from "@mikro-orm/core";
 import { Usuario } from "../entities/Usuario";
+import { Entrada } from "../entities/Entrada";
 
 export const getAllUsers = async (
   req: Request,
@@ -101,6 +102,59 @@ export const deleteUser = async (
       return;
     }
     res.status(200).json({ message: "Usuario eliminado" });
+  } catch (error: any) {
+    res
+      .status(500)
+      .json({ message: "Error interno del servidor", error: error.message });
+  }
+};
+
+// Nuevo controlador para obtener entradas por usuario
+
+export const getMisEntradas = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  const em = RequestContext.getEntityManager()!;
+  const idUsuario = (req.user as Usuario).idUsuario;
+
+  if (!idUsuario) {
+    res.status(401).json({ message: "ID de usuario no autentificado" });
+    return;
+  }
+
+  try {
+    const entradas = await em.getRepository(Entrada).find(
+      { fkIdCompra: { fkUsuario: idUsuario } },
+      {
+        populate: [
+          "fkIdEvento",
+          "fkIdEvento.fkIdClubLocal",
+          "fkIdEvento.fkIdClubVisitante",
+          "fkIdSector",
+          "fkIdCompra",
+        ],
+        orderBy: { fkIdEvento: { fechaHora: QueryOrder.desc } },
+      }
+    );
+    const entradasAplanadas = entradas.map((e) => ({
+      idEntrada: e.idEntrada,
+      codigoQr: e.codigoQr,
+      fechaCompra: e.fkIdCompra?.fechaCompra,
+      // Info del Evento
+      idEvento: e.fkIdEvento.idEvento,
+      fechaHora: e.fkIdEvento.fechaHora,
+      torneo: e.fkIdEvento.torneo,
+      // Info de Clubes
+      nombreLocal: e.fkIdEvento.fkIdClubLocal.nombre,
+      logoLocal: e.fkIdEvento.fkIdClubLocal.logoUrl,
+      nombreVisitante: e.fkIdEvento.fkIdClubVisitante.nombre,
+      logoVisitante: e.fkIdEvento.fkIdClubVisitante.logoUrl,
+      // Info del Sector
+      nombreSector: e.fkIdSector.nombreSector,
+    }));
+
+    res.status(200).json(entradasAplanadas);
   } catch (error: any) {
     res
       .status(500)

@@ -4,6 +4,7 @@ import {
   getUserById,
   updateUser,
   deleteUser,
+  getMisEntradas,
 } from "../controllers/user.controller";
 
 // Importamos los dos middlewares (manejar usuarios es de admin)
@@ -18,7 +19,7 @@ router.get("/:id", [isAuth, isAdmin], getUserById);
 router.put("/:id", [isAuth, isAdmin], updateUser);
 router.delete("/:id", [isAuth, isAdmin], deleteUser);
 
-// (Podrías agregar una ruta 'GET /me' que solo use 'isAuth'
-// para que un usuario vea su propio perfil)
+// --- Rutas de Usuario Autenticado ---
+router.get("/me/entradas", isAuth, getMisEntradas);
 
 export default router;
