@@ -1,0 +1,926 @@
+{
+  "namespaces": [],
+  "tables": [
+    {
+      "columns": {
+        "id_club": {
+          "name": "id_club",
+          "type": "int",
+          "unsigned": false,
+          "autoincrement": true,
+          "primary": true,
+          "nullable": false,
+          "length": null,
+          "mappedType": "integer"
+        },
+        "nombre": {
+          "name": "nombre",
+          "type": "varchar(100)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "length": 100,
+          "mappedType": "string"
+        },
+        "logo_url": {
+          "name": "logo_url",
+          "type": "varchar(255)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "length": 255,
+          "mappedType": "string"
+        }
+      },
+      "name": "club",
+      "indexes": [
+        {
+          "columnNames": [
+            "nombre"
+          ],
+          "composite": false,
+          "keyName": "nombre_UNIQUE",
+          "constraint": true,
+          "primary": false,
+          "unique": true
+        },
+        {
+          "keyName": "PRIMARY",
+          "columnNames": [
+            "id_club"
+          ],
+          "composite": false,
+          "constraint": true,
+          "primary": true,
+          "unique": true
+        }
+      ],
+      "checks": [],
+      "foreignKeys": {},
+      "nativeEnums": {}
+    },
+    {
+      "columns": {
+        "id_estadio": {
+          "name": "id_estadio",
+          "type": "int",
+          "unsigned": false,
+          "autoincrement": true,
+          "primary": true,
+          "nullable": false,
+          "length": null,
+          "mappedType": "integer"
+        },
+        "nombre": {
+          "name": "nombre",
+          "type": "varchar(100)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "length": 100,
+          "mappedType": "string"
+        },
+        "calle": {
+          "name": "calle",
+          "type": "varchar(150)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "length": 150,
+          "mappedType": "string"
+        },
+        "numero": {
+          "name": "numero",
+          "type": "varchar(10)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "length": 10,
+          "mappedType": "string"
+        },
+        "ciudad": {
+          "name": "ciudad",
+          "type": "varchar(100)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "length": 100,
+          "mappedType": "string"
+        }
+      },
+      "name": "estadio",
+      "indexes": [
+        {
+          "keyName": "PRIMARY",
+          "columnNames": [
+            "id_estadio"
+          ],
+          "composite": false,
+          "constraint": true,
+          "primary": true,
+          "unique": true
+        }
+      ],
+      "checks": [],
+      "foreignKeys": {},
+      "nativeEnums": {}
+    },
+    {
+      "columns": {
+        "id_evento": {
+          "name": "id_evento",
+          "type": "int",
+          "unsigned": false,
+          "autoincrement": true,
+          "primary": true,
+          "nullable": false,
+          "length": null,
+          "mappedType": "integer"
+        },
+        "fk_id_club_local": {
+          "name": "fk_id_club_local",
+          "type": "int",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "length": null,
+          "mappedType": "integer"
+        },
+        "fk_id_club_visitante": {
+          "name": "fk_id_club_visitante",
+          "type": "int",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "length": null,
+          "mappedType": "integer"
+        },
+        "fk_id_estadio_id_estadio": {
+          "name": "fk_id_estadio_id_estadio",
+          "type": "int",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "length": null,
+          "mappedType": "integer"
+        },
+        "fecha_hora": {
+          "name": "fecha_hora",
+          "type": "datetime",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "length": null,
+          "mappedType": "datetime"
+        },
+        "torneo": {
+          "name": "torneo",
+          "type": "varchar(100)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "length": 100,
+          "mappedType": "string"
+        },
+        "estado": {
+          "name": "estado",
+          "type": "enum('Programado','En Venta','Finalizado','Cancelado')",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "default": "'Programado'",
+          "enumItems": [
+            "Programado",
+            "En Venta",
+            "Finalizado",
+            "Cancelado"
+          ],
+          "mappedType": "enum"
+        },
+        "solo_publico_local": {
+          "name": "solo_publico_local",
+          "type": "tinyint(1)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "length": 1,
+          "default": "false",
+          "mappedType": "boolean"
+        }
+      },
+      "name": "evento",
+      "indexes": [
+        {
+          "columnNames": [
+            "fk_id_club_local"
+          ],
+          "composite": false,
+          "keyName": "fk_Eventos_ClubLocal_idx",
+          "constraint": false,
+          "primary": false,
+          "unique": false
+        },
+        {
+          "columnNames": [
+            "fk_id_club_visitante"
+          ],
+          "composite": false,
+          "keyName": "fk_Eventos_ClubVisitante_idx",
+          "constraint": false,
+          "primary": false,
+          "unique": false
+        },
+        {
+          "columnNames": [
+            "fk_id_estadio_id_estadio"
+          ],
+          "composite": false,
+          "keyName": "fk_Eventos_Estadios_idx",
+          "constraint": false,
+          "primary": false,
+          "unique": false
+        },
+        {
+          "keyName": "PRIMARY",
+          "columnNames": [
+            "id_evento"
+          ],
+          "composite": false,
+          "constraint": true,
+          "primary": true,
+          "unique": true
+        }
+      ],
+      "checks": [],
+      "foreignKeys": {
+        "evento_fk_id_club_local_foreign": {
+          "constraintName": "evento_fk_id_club_local_foreign",
+          "columnNames": [
+            "fk_id_club_local"
+          ],
+          "localTableName": "evento",
+          "referencedColumnNames": [
+            "id_club"
+          ],
+          "referencedTableName": "club",
+          "updateRule": "cascade"
+        },
+        "evento_fk_id_club_visitante_foreign": {
+          "constraintName": "evento_fk_id_club_visitante_foreign",
+          "columnNames": [
+            "fk_id_club_visitante"
+          ],
+          "localTableName": "evento",
+          "referencedColumnNames": [
+            "id_club"
+          ],
+          "referencedTableName": "club",
+          "updateRule": "cascade"
+        },
+        "evento_fk_id_estadio_id_estadio_foreign": {
+          "constraintName": "evento_fk_id_estadio_id_estadio_foreign",
+          "columnNames": [
+            "fk_id_estadio_id_estadio"
+          ],
+          "localTableName": "evento",
+          "referencedColumnNames": [
+            "id_estadio"
+          ],
+          "referencedTableName": "estadio",
+          "updateRule": "cascade"
+        }
+      },
+      "nativeEnums": {}
+    },
+    {
+      "columns": {
+        "id_sector": {
+          "name": "id_sector",
+          "type": "int",
+          "unsigned": false,
+          "autoincrement": true,
+          "primary": true,
+          "nullable": false,
+          "length": null,
+          "mappedType": "integer"
+        },
+        "fk_id_estadio_id_estadio": {
+          "name": "fk_id_estadio_id_estadio",
+          "type": "int",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "length": null,
+          "mappedType": "integer"
+        },
+        "nombre_sector": {
+          "name": "nombre_sector",
+          "type": "varchar(100)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "length": 100,
+          "mappedType": "string"
+        },
+        "capacidad": {
+          "name": "capacidad",
+          "type": "int",
+          "unsigned": true,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "length": null,
+          "mappedType": "integer"
+        }
+      },
+      "name": "sector",
+      "indexes": [
+        {
+          "columnNames": [
+            "fk_id_estadio_id_estadio"
+          ],
+          "composite": false,
+          "keyName": "fk_Sectores_Estadios_idx",
+          "constraint": false,
+          "primary": false,
+          "unique": false
+        },
+        {
+          "keyName": "PRIMARY",
+          "columnNames": [
+            "id_sector"
+          ],
+          "composite": false,
+          "constraint": true,
+          "primary": true,
+          "unique": true
+        }
+      ],
+      "checks": [],
+      "foreignKeys": {
+        "sector_fk_id_estadio_id_estadio_foreign": {
+          "constraintName": "sector_fk_id_estadio_id_estadio_foreign",
+          "columnNames": [
+            "fk_id_estadio_id_estadio"
+          ],
+          "localTableName": "sector",
+          "referencedColumnNames": [
+            "id_estadio"
+          ],
+          "referencedTableName": "estadio",
+          "updateRule": "cascade"
+        }
+      },
+      "nativeEnums": {}
+    },
+    {
+      "columns": {
+        "fk_id_evento_id_sector": {
+          "name": "fk_id_evento_id_sector",
+          "type": "int",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "length": null,
+          "mappedType": "integer"
+        },
+        "fk_id_sector_id_sector": {
+          "name": "fk_id_sector_id_sector",
+          "type": "int",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "length": null,
+          "mappedType": "integer"
+        },
+        "precio": {
+          "name": "precio",
+          "type": "numeric(10,2)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "precision": 10,
+          "scale": 2,
+          "mappedType": "decimal"
+        }
+      },
+      "name": "precio_evento_sector",
+      "indexes": [
+        {
+          "columnNames": [
+            "fk_id_evento_id_sector"
+          ],
+          "composite": false,
+          "keyName": "fk_Precios_Sectores_idx",
+          "constraint": false,
+          "primary": false,
+          "unique": false
+        },
+        {
+          "columnNames": [
+            "fk_id_sector_id_sector"
+          ],
+          "composite": false,
+          "keyName": "precio_evento_sector_fk_id_sector_id_sector_index",
+          "constraint": false,
+          "primary": false,
+          "unique": false
+        },
+        {
+          "keyName": "PRIMARY",
+          "columnNames": [
+            "fk_id_evento_id_sector",
+            "fk_id_sector_id_sector"
+          ],
+          "composite": true,
+          "constraint": true,
+          "primary": true,
+          "unique": true
+        }
+      ],
+      "checks": [],
+      "foreignKeys": {
+        "precio_evento_sector_fk_id_evento_id_sector_foreign": {
+          "constraintName": "precio_evento_sector_fk_id_evento_id_sector_foreign",
+          "columnNames": [
+            "fk_id_evento_id_sector"
+          ],
+          "localTableName": "precio_evento_sector",
+          "referencedColumnNames": [
+            "id_sector"
+          ],
+          "referencedTableName": "sector",
+          "deleteRule": "cascade",
+          "updateRule": "cascade"
+        },
+        "precio_evento_sector_fk_id_sector_id_sector_foreign": {
+          "constraintName": "precio_evento_sector_fk_id_sector_id_sector_foreign",
+          "columnNames": [
+            "fk_id_sector_id_sector"
+          ],
+          "localTableName": "precio_evento_sector",
+          "referencedColumnNames": [
+            "id_sector"
+          ],
+          "referencedTableName": "sector",
+          "updateRule": "cascade"
+        }
+      },
+      "nativeEnums": {}
+    },
+    {
+      "columns": {
+        "id_usuario": {
+          "name": "id_usuario",
+          "type": "int",
+          "unsigned": false,
+          "autoincrement": true,
+          "primary": true,
+          "nullable": false,
+          "length": null,
+          "mappedType": "integer"
+        },
+        "dni": {
+          "name": "dni",
+          "type": "varchar(20)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "length": 20,
+          "mappedType": "string"
+        },
+        "nombre": {
+          "name": "nombre",
+          "type": "varchar(100)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "length": 100,
+          "mappedType": "string"
+        },
+        "apellido": {
+          "name": "apellido",
+          "type": "varchar(100)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "length": 100,
+          "mappedType": "string"
+        },
+        "email": {
+          "name": "email",
+          "type": "varchar(255)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "length": 255,
+          "mappedType": "string"
+        },
+        "password": {
+          "name": "password",
+          "type": "varchar(255)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "length": 255,
+          "mappedType": "string"
+        },
+        "fecha_nacimiento": {
+          "name": "fecha_nacimiento",
+          "type": "date",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "length": null,
+          "mappedType": "date"
+        },
+        "rol": {
+          "name": "rol",
+          "type": "varchar(50)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "length": 50,
+          "default": "'user'",
+          "mappedType": "string"
+        }
+      },
+      "name": "usuario",
+      "indexes": [
+        {
+          "columnNames": [
+            "dni"
+          ],
+          "composite": false,
+          "keyName": "dni_UNIQUE",
+          "constraint": true,
+          "primary": false,
+          "unique": true
+        },
+        {
+          "columnNames": [
+            "email"
+          ],
+          "composite": false,
+          "keyName": "email_UNIQUE",
+          "constraint": true,
+          "primary": false,
+          "unique": true
+        },
+        {
+          "keyName": "PRIMARY",
+          "columnNames": [
+            "id_usuario"
+          ],
+          "composite": false,
+          "constraint": true,
+          "primary": true,
+          "unique": true
+        }
+      ],
+      "checks": [],
+      "foreignKeys": {},
+      "nativeEnums": {}
+    },
+    {
+      "columns": {
+        "id_compra": {
+          "name": "id_compra",
+          "type": "int",
+          "unsigned": false,
+          "autoincrement": true,
+          "primary": true,
+          "nullable": false,
+          "length": null,
+          "mappedType": "integer"
+        },
+        "fk_usuario_id_usuario": {
+          "name": "fk_usuario_id_usuario",
+          "type": "int",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "length": null,
+          "mappedType": "integer"
+        },
+        "fecha_compra": {
+          "name": "fecha_compra",
+          "type": "datetime",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "length": null,
+          "default": "CURRENT_TIMESTAMP",
+          "mappedType": "datetime"
+        },
+        "monto_total": {
+          "name": "monto_total",
+          "type": "numeric(10,2)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "precision": 10,
+          "scale": 2,
+          "mappedType": "decimal"
+        },
+        "metodo_pago": {
+          "name": "metodo_pago",
+          "type": "varchar(50)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "length": 50,
+          "mappedType": "string"
+        },
+        "estado_pago": {
+          "name": "estado_pago",
+          "type": "varchar(50)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "length": 50,
+          "default": "'Pendiente'",
+          "mappedType": "string"
+        },
+        "id_preferencia_mp": {
+          "name": "id_preferencia_mp",
+          "type": "varchar(100)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "length": 100,
+          "mappedType": "string"
+        },
+        "id_pago_mp": {
+          "name": "id_pago_mp",
+          "type": "varchar(100)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "length": 100,
+          "mappedType": "string"
+        }
+      },
+      "name": "compra",
+      "indexes": [
+        {
+          "columnNames": [
+            "fk_usuario_id_usuario"
+          ],
+          "composite": false,
+          "keyName": "fk_Compras_Usuarios_idx",
+          "constraint": false,
+          "primary": false,
+          "unique": false
+        },
+        {
+          "columnNames": [
+            "id_preferencia_mp"
+          ],
+          "composite": false,
+          "keyName": "compra_id_preferencia_mp_unique",
+          "constraint": true,
+          "primary": false,
+          "unique": true
+        },
+        {
+          "columnNames": [
+            "id_pago_mp"
+          ],
+          "composite": false,
+          "keyName": "compra_id_pago_mp_unique",
+          "constraint": true,
+          "primary": false,
+          "unique": true
+        },
+        {
+          "keyName": "PRIMARY",
+          "columnNames": [
+            "id_compra"
+          ],
+          "composite": false,
+          "constraint": true,
+          "primary": true,
+          "unique": true
+        }
+      ],
+      "checks": [],
+      "foreignKeys": {
+        "compra_fk_usuario_id_usuario_foreign": {
+          "constraintName": "compra_fk_usuario_id_usuario_foreign",
+          "columnNames": [
+            "fk_usuario_id_usuario"
+          ],
+          "localTableName": "compra",
+          "referencedColumnNames": [
+            "id_usuario"
+          ],
+          "referencedTableName": "usuario",
+          "updateRule": "cascade"
+        }
+      },
+      "nativeEnums": {}
+    },
+    {
+      "columns": {
+        "id_entrada": {
+          "name": "id_entrada",
+          "type": "int",
+          "unsigned": false,
+          "autoincrement": true,
+          "primary": true,
+          "nullable": false,
+          "length": null,
+          "mappedType": "integer"
+        },
+        "fk_id_sector_id_sector": {
+          "name": "fk_id_sector_id_sector",
+          "type": "int",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "length": null,
+          "mappedType": "integer"
+        },
+        "fk_id_evento_id_evento": {
+          "name": "fk_id_evento_id_evento",
+          "type": "int",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "length": null,
+          "mappedType": "integer"
+        },
+        "fk_id_compra_id_compra": {
+          "name": "fk_id_compra_id_compra",
+          "type": "int",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "length": null,
+          "mappedType": "integer"
+        },
+        "fila": {
+          "name": "fila",
+          "type": "varchar(10)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "length": 10,
+          "mappedType": "string"
+        },
+        "asiento": {
+          "name": "asiento",
+          "type": "varchar(10)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "length": 10,
+          "mappedType": "string"
+        },
+        "codigo_qr": {
+          "name": "codigo_qr",
+          "type": "varchar(255)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "length": 255,
+          "mappedType": "string"
+        }
+      },
+      "name": "entrada",
+      "indexes": [
+        {
+          "columnNames": [
+            "fk_id_sector_id_sector"
+          ],
+          "composite": false,
+          "keyName": "fk_Entradas_Sectores_idx",
+          "constraint": false,
+          "primary": false,
+          "unique": false
+        },
+        {
+          "columnNames": [
+            "fk_id_evento_id_evento"
+          ],
+          "composite": false,
+          "keyName": "fk_Entradas_Eventos_idx",
+          "constraint": false,
+          "primary": false,
+          "unique": false
+        },
+        {
+          "columnNames": [
+            "fk_id_compra_id_compra"
+          ],
+          "composite": false,
+          "keyName": "fk_Entradas_Compras_idx",
+          "constraint": false,
+          "primary": false,
+          "unique": false
+        },
+        {
+          "columnNames": [
+            "codigo_qr"
+          ],
+          "composite": false,
+          "keyName": "codigo_qr_UNIQUE",
+          "constraint": true,
+          "primary": false,
+          "unique": true
+        },
+        {
+          "keyName": "PRIMARY",
+          "columnNames": [
+            "id_entrada"
+          ],
+          "composite": false,
+          "constraint": true,
+          "primary": true,
+          "unique": true
+        }
+      ],
+      "checks": [],
+      "foreignKeys": {
+        "entrada_fk_id_sector_id_sector_foreign": {
+          "constraintName": "entrada_fk_id_sector_id_sector_foreign",
+          "columnNames": [
+            "fk_id_sector_id_sector"
+          ],
+          "localTableName": "entrada",
+          "referencedColumnNames": [
+            "id_sector"
+          ],
+          "referencedTableName": "sector",
+          "updateRule": "cascade"
+        },
+        "entrada_fk_id_evento_id_evento_foreign": {
+          "constraintName": "entrada_fk_id_evento_id_evento_foreign",
+          "columnNames": [
+            "fk_id_evento_id_evento"
+          ],
+          "localTableName": "entrada",
+          "referencedColumnNames": [
+            "id_evento"
+          ],
+          "referencedTableName": "evento",
+          "updateRule": "cascade"
+        },
+        "entrada_fk_id_compra_id_compra_foreign": {
+          "constraintName": "entrada_fk_id_compra_id_compra_foreign",
+          "columnNames": [
+            "fk_id_compra_id_compra"
+          ],
+          "localTableName": "entrada",
+          "referencedColumnNames": [
+            "id_compra"
+          ],
+          "referencedTableName": "compra",
+          "deleteRule": "set null",
+          "updateRule": "cascade"
+        }
+      },
+      "nativeEnums": {}
+    }
+  ],
+  "nativeEnums": {}
+}

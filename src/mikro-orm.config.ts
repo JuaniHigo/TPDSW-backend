@@ -1,3 +1,6 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import { defineConfig } from "@mikro-orm/core";
 import { MySqlDriver } from "@mikro-orm/mysql"; // <-- 1. Importar el Driver
 
@@ -32,4 +35,9 @@ export default defineConfig({
   ],
   // Opcional: Esto ayuda a ts-node
   tsNode: true,
+  migrations: {
+    path: "dist/migrations",
+    pathTs: "src/migrations",
+    glob: "!(*.d).{js,ts}",
+  },
 });
