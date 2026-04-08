@@ -39,6 +39,7 @@
   },
   "devDependencies": {
     "@mikro-orm/cli": "^6.5.9",
+    "@mikro-orm/migrations": "^6.5.9",
     "@types/bcrypt": "^5.0.2",
     "@types/bcryptjs": "^3.0.0",
     "@types/compression": "^1.8.1",

@@ -85,21 +85,25 @@ de entradas con código QR.
 
 ### Variables de Entorno
 
-Crear un archivo `.env` en la raíz del proyecto con:
+1. Duplicá el archivo `.env.example` y renombralo a `.env`.
+2. Reemplazá los valores marcados como `changeme` con tus credenciales locales o las del servidor compartido (Railway).
 
-    PORT=3000
-    NODE_ENV=development
+Variables soportadas:
 
-    DATABASE_HOST=localhost
-    DATABASE_PORT=3306
-    DATABASE_USER=root
-    DATABASE_PASSWORD=tu_password
-    DATABASE_NAME=kicket_db
-
-    JWT_SECRET=tu_clave_secreta
-
-    MERCADOPAGO_ACCESS_TOKEN=tu_access_token
-    MERCADOPAGO_WEBHOOK_URL=https://tu-dominio/api/pagos/webhook
+```
+PORT=3000
+NODE_ENV=development
+DB_HOST=tu_host
+DB_PORT=tu_puerto
+DB_USER=tu_usuario
+DB_PASSWORD=tu_password
+DB_NAME=tu_base
+JWT_SECRET=tu_clave_secreta
+MERCADOPAGO_ACCESS_TOKEN=tu_access_token
+MERCADOPAGO_PUBLIC_KEY=tu_public_key
+MERCADOPAGO_WEBHOOK_URL=https://tu-dominio/api/pagos/webhook
+FRONTEND_URL=http://localhost:5173
+```
 
 ### Pasos de Instalación
 
@@ -107,8 +111,10 @@ Crear un archivo `.env` en la raíz del proyecto con:
 git clone <url-del-repo>
 cd TPDSW-backend
 pnpm install
-pnpm mikro-orm migration:up
-pnpm dev
+    pnpm mikro-orm migration:up
+    pnpm dev
+
+> Cada cambio en las entidades debe acompañarse de `pnpm mikro-orm migration:create` y `pnpm mikro-orm migration:up` para mantener sincronizada la base compartida.
 ```
 
 ## 📂 Estructura del Proyecto
