@@ -5,17 +5,16 @@ import {
   deletePrecio,
 } from "../controllers/precios.controller";
 
-// Importamos los dos middlewares
 import { isAuth } from "../middlewares/auth.middleware";
 import { isAdmin } from "../middlewares/isAdmin.middleware";
+import { validate } from "../middlewares/validate.middleware";
+import { setPrecioSchema } from "../schemas/precio.schema";
 
 const router = Router();
 
-// --- Ruta Pública ---
-router.get("/evento/:id_evento", getPreciosPorEvento);
+router.get("/evento/:idEvento", getPreciosPorEvento);
 
-// --- Rutas de Administrador ---
-router.post("/", [isAuth, isAdmin], setPrecio);
-router.delete("/:id_evento/:id_sector", [isAuth, isAdmin], deletePrecio);
+router.post("/", [isAuth, isAdmin, validate(setPrecioSchema)], setPrecio);
+router.delete("/:idEvento/:idSector", [isAuth, isAdmin], deletePrecio);
 
 export default router;

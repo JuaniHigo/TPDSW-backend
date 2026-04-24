@@ -19,7 +19,7 @@ export const register = async (
   const em = RequestContext.getEntityManager()!;
 
   try {
-    const { password, ...userData } = req.body;
+    const { dni, nombre, apellido, email, password, fechaNacimiento } = req.body;
 
     if (!password || password.trim() === "") {
       return res.status(400).json({ message: "La contraseña es obligatoria." });
@@ -28,13 +28,14 @@ export const register = async (
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    // ⛔ CAMBIO 4: Usamos 'em' (del RequestContext) en lugar de 'orm.em'
-    // ⛔ CAMBIO 5: Usamos 'Usuario' (singular)
-    // ⛔ CAMBIO 6: Corregimos 'fecha_nacimiento' a 'fechaNacimiento'
+    // Solo pasamos campos permitidos — "rol" queda excluido para evitar escalamiento de privilegios
     const newUser = em.create(Usuario, {
-      ...userData,
+      dni,
+      nombre,
+      apellido,
+      email,
       password: hashedPassword,
-      fechaNacimiento: userData.fechaNacimiento || null, // DEBE ser camelCase
+      fechaNacimiento: fechaNacimiento || null,
     });
 
     // ⛔ CAMBIO 7: Usamos 'em' (del RequestContext)

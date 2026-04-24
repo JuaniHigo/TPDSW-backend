@@ -30,16 +30,8 @@ export const getPreciosPorEvento = async (
 export const setPrecio = async (req: Request, res: Response): Promise<void> => {
   const em = RequestContext.getEntityManager()!;
   try {
-    // Usamos camelCase (fkIdEvento, fkIdSector)
+    // Validado por setPrecioSchema en la ruta
     const { fkIdEvento, fkIdSector, precio } = req.body;
-
-    if (!fkIdEvento || !fkIdSector || !precio) {
-      // ✅ CORRECCIÓN 1: No hacemos 'return' del 'res.json()'.
-      res
-        .status(400)
-        .json({ message: "Faltan 'fkIdEvento', 'fkIdSector' o 'precio'." });
-      return; // <-- Añadimos un 'return;' vacío aquí para salir de la función.
-    }
 
     const repo = em.getRepository(PrecioEventoSector);
 

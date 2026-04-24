@@ -7,21 +7,18 @@ import {
   deleteSector,
 } from "../controllers/sectores.controller";
 
-// Importamos los dos middlewares
 import { isAuth } from "../middlewares/auth.middleware";
 import { isAdmin } from "../middlewares/isAdmin.middleware";
+import { validate } from "../middlewares/validate.middleware";
+import { createSectorSchema, updateSectorSchema } from "../schemas/sector.schema";
 
 const router = Router();
 
-// --- Rutas Públicas ---
-// (Asumiendo que cualquiera puede ver los sectores de un estadio,
-// el controlador 'getAllSectores' debería filtrar por ?estadioId=X)
 router.get("/", getAllSectores);
-router.get("/:id", getSectorById); // (Asumiendo que el ID es único)
+router.get("/:id", getSectorById);
 
-// --- Rutas de Administrador ---
-router.post("/", [isAuth, isAdmin], createSector);
-router.put("/:id", [isAuth, isAdmin], updateSector);
+router.post("/", [isAuth, isAdmin, validate(createSectorSchema)], createSector);
+router.put("/:id", [isAuth, isAdmin, validate(updateSectorSchema)], updateSector);
 router.delete("/:id", [isAuth, isAdmin], deleteSector);
 
 export default router;

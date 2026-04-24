@@ -7,19 +7,18 @@ import {
   deleteEvento,
 } from "../controllers/eventos.controller";
 
-// Importamos los dos middlewares
 import { isAuth } from "../middlewares/auth.middleware";
 import { isAdmin } from "../middlewares/isAdmin.middleware";
+import { validate } from "../middlewares/validate.middleware";
+import { createEventoSchema, updateEventoSchema } from "../schemas/evento.schema";
 
 const router = Router();
 
-// --- Rutas Públicas ---
 router.get("/", getAllEventos);
 router.get("/:id", getEventoById);
 
-// --- Rutas de Administrador ---
-router.post("/", [isAuth, isAdmin], createEvento);
-router.put("/:id", [isAuth, isAdmin], updateEvento);
+router.post("/", [isAuth, isAdmin, validate(createEventoSchema)], createEvento);
+router.put("/:id", [isAuth, isAdmin, validate(updateEventoSchema)], updateEvento);
 router.delete("/:id", [isAuth, isAdmin], deleteEvento);
 
 export default router;

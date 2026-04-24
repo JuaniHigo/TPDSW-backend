@@ -4,7 +4,8 @@ export const registerSchema = z.object({
     body: z.object({
         dni: z.string()
             .min(7, { message: "El DNI debe tener entre 7 y 8 dígitos" })
-            .max(8, { message: "El DNI debe tener entre 7 y 8 dígitos" }),
+            .max(8, { message: "El DNI debe tener entre 7 y 8 dígitos" })
+            .regex(/^\d+$/, { message: "El DNI debe contener solo dígitos" }),
         nombre: z.string()
             .min(2, { message: "El nombre es requerido" }),
         apellido: z.string()
@@ -13,7 +14,7 @@ export const registerSchema = z.object({
             .email({ message: "El formato del email no es válido" }),
         password: z.string()
             .min(6, { message: "La contraseña debe tener al menos 6 caracteres" }),
-        fecha_nacimiento: z.string().optional()
+        fechaNacimiento: z.string().optional()
     })
 });
 

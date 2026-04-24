@@ -7,19 +7,18 @@ import {
   deleteEstadio,
 } from "../controllers/estadios.controller";
 
-// Importamos los dos middlewares
 import { isAuth } from "../middlewares/auth.middleware";
 import { isAdmin } from "../middlewares/isAdmin.middleware";
+import { validate } from "../middlewares/validate.middleware";
+import { createEstadioSchema, updateEstadioSchema } from "../schemas/estadio.schema";
 
 const router = Router();
 
-// --- Rutas Públicas ---
 router.get("/", getAllEstadios);
 router.get("/:id", getEstadioById);
 
-// --- Rutas de Administrador ---
-router.post("/", [isAuth, isAdmin], createEstadio);
-router.put("/:id", [isAuth, isAdmin], updateEstadio);
+router.post("/", [isAuth, isAdmin, validate(createEstadioSchema)], createEstadio);
+router.put("/:id", [isAuth, isAdmin, validate(updateEstadioSchema)], updateEstadio);
 router.delete("/:id", [isAuth, isAdmin], deleteEstadio);
 
 export default router;

@@ -21,35 +21,77 @@ const client = new MercadoPagoConfig({
   accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN!,
 });
 
-// ✅ CAMBIO 3: Tipamos 'em' correctamente y usamos camelCase/Singular
 async function generarEntradas(
-  em: EntityManager, // Tipo correcto
+  em: EntityManager,
   idCompra: number,
   eventoId: number,
   sectorId: number,
   quantity: number
 ) {
   for (let i = 0; i < quantity; i++) {
-    // Creamos la entrada
     const nuevaEntrada = em.create(Entrada, {
-      fkIdCompra: idCompra, // camelCase
-      fkIdEvento: eventoId, // camelCase
+      fkIdCompra: em.getReference(Compra, idCompra),
+      fkIdEvento: em.getReference(Evento, eventoId),
       fkIdSector: em.getReference(Sector, sectorId),
-      codigoQr: "generating...", // camelCase
+      codigoQr: "generating...",
     });
 
-    await em.flush(); // Guardamos para obtener el ID
+    await em.flush();
 
-    // Generamos el QR con el ID real
     const qrData = JSON.stringify({
-      entradaId: nuevaEntrada.idEntrada, // camelCase
+      entradaId: nuevaEntrada.idEntrada,
       eventoId,
       compraId: idCompra,
     });
     nuevaEntrada.codigoQr = await QRCode.toDataURL(qrData);
 
-    await em.flush(); // Actualizamos la entrada con el QR
+    await em.flush();
   }
+}
+
+// Función auxiliar: valida evento, sector, capacidad y precio
+async function validarCompra(
+  txEm: EntityManager,
+  eventoId: number,
+  sectorId: number,
+  quantity: number
+) {
+  // 1. Verificar que el evento existe
+  const evento = await txEm.findOne(Evento, { idEvento: eventoId }, { populate: ['fkIdEstadio'] });
+  if (!evento) {
+    throw new Error("Evento no encontrado.");
+  }
+
+  // 2. Verificar que el sector pertenece al estadio del evento
+  const sector = await txEm.findOne(Sector, { idSector: sectorId }, { populate: ['fkIdEstadio'] });
+  if (!sector || sector.fkIdEstadio.idEstadio !== evento.fkIdEstadio.idEstadio) {
+    throw new Error("El sector no pertenece al estadio de este evento.");
+  }
+
+  // 3. Verificar capacidad disponible
+  if (sector.capacidad) {
+    const entradasVendidas = await txEm.count(Entrada, {
+      fkIdEvento: eventoId,
+      fkIdSector: sectorId,
+    });
+    if (entradasVendidas + quantity > sector.capacidad) {
+      const disponibles = sector.capacidad - entradasVendidas;
+      throw new Error(
+        `Capacidad insuficiente. Disponibles: ${disponibles}, solicitadas: ${quantity}.`
+      );
+    }
+  }
+
+  // 4. Obtener precio
+  const precioData = await txEm.findOne(PrecioEventoSector, {
+    fkIdEvento: eventoId,
+    fkIdSector: sectorId,
+  });
+  if (!precioData) {
+    throw new Error("Precio no encontrado para el sector y evento.");
+  }
+
+  return { evento, sector, precioData };
 }
 
 // Crear preferencia de Mercado Pago
@@ -63,28 +105,15 @@ export const crearPreferenciaMercadoPago = async (
     return res.status(401).json({ message: "Usuario no autenticado." });
   }
 
+  // Validado por pagoSchema en la ruta
   const { eventoId, sectorId, quantity } = req.body;
-  if (!eventoId || !sectorId || !quantity) {
-    return res
-      .status(400)
-      .json({ message: "Faltan datos (evento, sector, cantidad)." });
-  }
 
-  // ✅ CAMBIO 5: Usamos RequestContext para esta ruta de usuario
   const em = RequestContext.getEntityManager()!;
 
   try {
-    // ✅ Usamos 'em.transactional'
     const { preferenceId, idCompra } = await em.transactional(async (txEm) => {
-      // 1. Obtener precio
-      // ✅ Usamos txEm, Singular y camelCase
-      const precioData = await txEm.findOne(PrecioEventoSector, {
-        fkIdEvento: eventoId,
-        fkIdSector: sectorId,
-      });
-      if (!precioData) {
-        throw new Error("Precio no encontrado para el sector y evento.");
-      }
+      // Validar evento, sector, capacidad y precio
+      const { precioData } = await validarCompra(txEm, eventoId, sectorId, Number(quantity));
       const montoTotal = Number(precioData.precio) * Number(quantity);
 
       // 2. Crear la Compra
@@ -133,9 +162,10 @@ export const crearPreferenciaMercadoPago = async (
     res.status(201).json({ preferenceId, idCompra }); // Devolvemos ambos
   } catch (error: any) {
     console.error("Error al crear la preferencia:", error);
+    const statusCode = error.message.includes("no encontrado") || error.message.includes("no pertenece") ? 400 : 500;
     res
-      .status(500)
-      .json({ message: "Error interno del servidor.", error: error.message });
+      .status(statusCode)
+      .json({ message: error.message || "Error interno del servidor." });
   }
 };
 
@@ -147,25 +177,15 @@ export const procesarPagoTarjeta = async (req: Request, res: Response) => {
     return res.status(401).json({ message: "Usuario no autenticado." });
   }
 
+  // Validado por pagoSchema en la ruta
   const { eventoId, sectorId, quantity } = req.body;
-  if (!eventoId || !sectorId || !quantity) {
-    return res.status(400).json({ message: "Faltan datos." });
-  }
 
-  // ✅ CAMBIO 7: Usamos RequestContext
   const em = RequestContext.getEntityManager()!;
 
   try {
     const idCompra = await em.transactional(async (txEm) => {
-      // 1. Obtener precio
-      // ✅ Usamos txEm, Singular y camelCase
-      const precioData = await txEm.findOne(PrecioEventoSector, {
-        fkIdEvento: eventoId,
-        fkIdSector: sectorId,
-      });
-      if (!precioData) {
-        throw new Error("Precio no encontrado.");
-      }
+      // Validar evento, sector, capacidad y precio
+      const { precioData } = await validarCompra(txEm, eventoId, sectorId, Number(quantity));
       const montoTotal = Number(precioData.precio) * Number(quantity);
 
       // 2. Crear la Compra
@@ -193,9 +213,10 @@ export const procesarPagoTarjeta = async (req: Request, res: Response) => {
     res.status(201).json({ message: "Compra procesada con éxito.", idCompra });
   } catch (error: any) {
     console.error("Error al procesar pago con tarjeta:", error);
+    const statusCode = error.message.includes("no encontrado") || error.message.includes("no pertenece") ? 400 : 500;
     res
-      .status(500)
-      .json({ message: "Error interno del servidor.", error: error.message });
+      .status(statusCode)
+      .json({ message: error.message || "Error interno del servidor." });
   }
 };
 

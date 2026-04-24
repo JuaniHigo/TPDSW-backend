@@ -67,18 +67,20 @@ export const createSector = async (
 ): Promise<void> => {
   const em = RequestContext.getEntityManager()!;
   try {
-    // Para crear un sector, necesitamos el ID del estadio al que pertenece
-    const { fkIdEstadio, ...sectorData } = req.body;
-    if (!fkIdEstadio) {
-      res
-        .status(400)
-        .json({ message: "El campo 'fkIdEstadio' es obligatorio." });
+    // req.body ya está limpio por createSectorSchema
+    const { fkIdEstadio, nombreSector, capacidad } = req.body;
+
+    // Verificar que el estadio existe
+    const estadio = await em.findOne(Estadio, { idEstadio: fkIdEstadio });
+    if (!estadio) {
+      res.status(400).json({ message: "El estadio especificado no existe." });
       return;
     }
 
     const newSector = em.create(Sector, {
-      ...sectorData,
-      fkIdEstadio: em.getReference(Estadio, fkIdEstadio),
+      fkIdEstadio: estadio,
+      nombreSector,
+      capacidad,
     });
 
     await em.flush();
@@ -105,9 +107,8 @@ export const updateSector = async (
       return;
     }
 
-    // No permitimos cambiar el 'fkIdEstadio' fácilmente, solo el resto de la data
-    const { fkIdEstadio, ...updateData } = req.body;
-    wrap(sector).assign(updateData);
+    // req.body ya está limpio por updateSectorSchema (solo nombreSector, capacidad)
+    wrap(sector).assign(req.body);
     await em.flush();
 
     res.status(200).json({ message: "Sector actualizado correctamente" });

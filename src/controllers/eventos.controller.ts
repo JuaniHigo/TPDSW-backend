@@ -1,9 +1,8 @@
 import { Request, Response } from "express";
-// ⛔ ERROR: No importamos 'orm'
-// ✅ CORRECTO: Importamos RequestContext
 import { QueryOrder, RequestContext, wrap } from "@mikro-orm/core";
-// ✅ CORRECTO: Usamos el nombre de la clase en SINGULAR
 import { Evento } from "../entities/Evento";
+import { Club } from "../entities/Club";
+import { Estadio } from "../entities/Estadio";
 
 // Obtener todos los eventos con detalle y paginación
 export const getAllEventos = async (
@@ -111,18 +110,45 @@ export const createEvento = async (
   res: Response
 ): Promise<void> => {
   try {
-    // ✅ OBTENEMOS 'em' DEL CONTEXTO
     const em = RequestContext.getEntityManager()!;
-    // ✅ Usamos 'em' y 'Evento'
-    const newEvento = em.create(Evento, req.body);
-    // ✅ Usamos 'em'
+    const { fkIdClubLocal, fkIdClubVisitante, fkIdEstadio, fechaHora, torneo, estado, soloPublicoLocal } = req.body;
+
+    // Verificar que las entidades referenciadas existan
+    const [clubLocal, clubVisitante, estadio] = await Promise.all([
+      em.findOne(Club, { idClub: fkIdClubLocal }),
+      em.findOne(Club, { idClub: fkIdClubVisitante }),
+      em.findOne(Estadio, { idEstadio: fkIdEstadio }),
+    ]);
+
+    if (!clubLocal) {
+      res.status(400).json({ message: "El club local especificado no existe." });
+      return;
+    }
+    if (!clubVisitante) {
+      res.status(400).json({ message: "El club visitante especificado no existe." });
+      return;
+    }
+    if (!estadio) {
+      res.status(400).json({ message: "El estadio especificado no existe." });
+      return;
+    }
+
+    const newEvento = em.create(Evento, {
+      fkIdClubLocal: clubLocal,
+      fkIdClubVisitante: clubVisitante,
+      fkIdEstadio: estadio,
+      fechaHora,
+      torneo,
+      estado,
+      soloPublicoLocal,
+    });
     await em.flush();
     res.status(201).json(newEvento);
   } catch (error: any) {
     console.error("Error en createEvento:", error);
     res
       .status(500)
-      .json({ message: "Error interno del servidor", error: error.message });
+      .json({ message: "Error interno del servidor" });
   }
 };
 
@@ -143,7 +169,8 @@ export const updateEvento = async (
       return;
     }
 
-    wrap(evento).assign(req.body);
+    const { fkIdClubLocal, fkIdClubVisitante, fkIdEstadio, fechaHora, torneo, estado, soloPublicoLocal } = req.body;
+    wrap(evento).assign({ fkIdClubLocal, fkIdClubVisitante, fkIdEstadio, fechaHora, torneo, estado, soloPublicoLocal });
     // ✅ Usamos 'em'
     await em.flush();
 

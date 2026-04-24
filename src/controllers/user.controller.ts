@@ -64,8 +64,8 @@ export const updateUser = async (
   const em = RequestContext.getEntityManager()!;
   try {
     const { id } = req.params;
-    // Excluimos campos sensibles que no deberían actualizarse por esta vía
-    const { password, rol, ...updateData } = req.body;
+    // req.body ya está limpio (solo dni, nombre, apellido, email, fechaNacimiento)
+    // gracias al updateUserSchema aplicado en la ruta
 
     const usuario = await em.getRepository(Usuario).findOne(+id);
 
@@ -76,8 +76,7 @@ export const updateUser = async (
       return;
     }
 
-    // Usamos wrap().assign() para actualizar la data
-    wrap(usuario).assign(updateData);
+    wrap(usuario).assign(req.body);
     await em.flush();
 
     res.status(200).json({ message: "Usuario actualizado" });

@@ -77,8 +77,8 @@ export const createEstadio = async (
   try {
     // ✅ OBTENEMOS 'em' DEL CONTEXTO
     const em = RequestContext.getEntityManager()!;
-    // ✅ Usamos 'em' y 'Estadio'
-    const newEstadio = em.create(Estadio, req.body);
+    const { nombre, calle, numero, ciudad } = req.body;
+    const newEstadio = em.create(Estadio, { nombre, calle, numero, ciudad });
     // ✅ Usamos 'em'
     await em.flush();
     res.status(201).json(newEstadio);
@@ -109,7 +109,8 @@ export const updateEstadio = async (
       return;
     }
 
-    wrap(estadio).assign(req.body);
+    const { nombre, calle, numero, ciudad } = req.body;
+    wrap(estadio).assign({ nombre, calle, numero, ciudad });
     // ✅ Usamos 'em'
     await em.flush();
 

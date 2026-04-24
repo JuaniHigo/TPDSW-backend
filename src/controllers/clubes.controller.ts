@@ -75,9 +75,8 @@ export const createClub = async (
   try {
     // ✅ OBTENEMOS 'em' DEL CONTEXTO
     const em = RequestContext.getEntityManager()!;
-    // ✅ Usamos 'em' y 'Club'
-    const newClub = em.create(Club, req.body);
-    // ✅ Usamos 'em'
+    const { nombre, logoUrl } = req.body;
+    const newClub = em.create(Club, { nombre, logoUrl });
     await em.flush();
 
     res.status(201).json(newClub);
@@ -115,8 +114,8 @@ export const updateClub = async (
       return;
     }
 
-    // 'wrap(club).assign(data)' actualiza la entidad de forma segura
-    wrap(club).assign(req.body);
+    const { nombre, logoUrl } = req.body;
+    wrap(club).assign({ nombre, logoUrl });
     // ✅ Usamos 'em'
     await em.flush();
 

@@ -1,15 +1,12 @@
 import { Router } from "express";
 import { register, login } from "../controllers/auth.controller";
-// (Opcional) Aquí podrías agregar validaciones de Zod si quisieras
+import { validate } from "../middlewares/validate.middleware";
+import { registerSchema, loginSchema } from "../schemas/auth.schema";
 
 const router = Router();
 
-// 1. Ruta de Registro
-// POST /api/auth/register
-router.post("/register", register);
+router.post("/register", validate(registerSchema), register);
 
-// 2. Ruta de Login
-// POST /api/auth/login
-router.post("/login", login);
+router.post("/login", validate(loginSchema), login);
 
 export default router;
