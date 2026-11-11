@@ -1,5 +1,2 @@
-ignoredBuiltDependencies:
-  - bcrypt
-
 onlyBuiltDependencies:
-  - sqlite3
+  - esbuild

@@ -1,115 +1,129 @@
-import { Request, Response } from "express";
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
-
-// ⛔ CAMBIO 1: No importamos 'orm' desde 'app'.
-// Importamos RequestContext para OBTENER el 'em'
-import { RequestContext } from "@mikro-orm/core";
-
-// ⛔ CAMBIO 2: Importamos la clase 'Usuario' (singular)
-import { Usuario } from "../entities/Usuario";
-
-export const register = async (
-  req: Request,
-  res: Response
-): Promise<Response> => {
-  // ⛔ CAMBIO 3: Obtenemos el EntityManager (em) del contexto
-  // El '!' al final es para decirle a TS "confía en mí, esto existe"
-  // (Existe porque nuestro middleware en app.ts lo garantiza)
-  const em = RequestContext.getEntityManager()!;
-
-  try {
-    const { dni, nombre, apellido, email, password, fechaNacimiento } = req.body;
-
-    if (!password || password.trim() === "") {
-      return res.status(400).json({ message: "La contraseña es obligatoria." });
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import { randomBytes, createHash } from 'node:crypto';
+import { LockMode } from '@mikro-orm/core';
+import { z } from 'zod';
+import { Usuario } from '../entities/Usuario';
+import { em, handler, HttpError } from '../lib/http';
+import { userDto } from '../lib/dto';
+import { getEnv } from '../config/env';
+import { mailer } from '../services/mail';
+export const passwordSchema = z.string().min(8).max(72);
+export const tokenHash = (token: string) =>
+  createHash('sha256').update(token).digest('hex');
+export const register = handler(async (req, res) => {
+  const data = z
+    .object({
+      dni: z.string().regex(/^\d{7,8}$/),
+      nombre: z.string().trim().min(2).max(100),
+      apellido: z.string().trim().min(2).max(100),
+      email: z
+        .string()
+        .email()
+        .transform((s) => s.toLowerCase()),
+      password: passwordSchema,
+      fechaNacimiento: z.string().date().optional(),
+    })
+    .parse(req.body);
+  const user = em().create(Usuario, {
+    ...data,
+    password: await bcrypt.hash(data.password, 12),
+    rol: 'user',
+  });
+  await em().persistAndFlush(user);
+  return res.status(201).json({ message: 'Usuario registrado correctamente' });
+});
+export const login = handler(async (req, res) => {
+  const { email, password } = z
+    .object({
+      email: z
+        .string()
+        .email()
+        .transform((s) => s.toLowerCase()),
+      password: z.string().min(1).max(72),
+    })
+    .parse(req.body);
+  const user = await em().findOne(Usuario, { email });
+  if (!user || !(await bcrypt.compare(password, user.password)))
+    throw new HttpError(401, 'INVALID_CREDENTIALS', 'Credenciales inválidas');
+  const token = jwt.sign(
+    { idUsuario: user.idUsuario, sessionVersion: user.sessionVersion },
+    getEnv().JWT_SECRET,
+    { expiresIn: '1h', algorithm: 'HS256' },
+  );
+  return res.json({ token, user: userDto(user) });
+});
+export const forgotPassword = handler(async (req, res) => {
+  const { email } = z
+    .object({
+      email: z
+        .string()
+        .email()
+        .transform((s) => s.toLowerCase()),
+    })
+    .parse(req.body);
+  const user = await em().findOne(Usuario, { email });
+  if (user) {
+    const token = randomBytes(32).toString('hex');
+    user.resetTokenHash = tokenHash(token);
+    user.resetExpiresAt = new Date(Date.now() + 30 * 60000);
+    await em().flush();
+    try {
+      await mailer.sendReset(email, token);
+    } catch {
+      // Never expose SMTP failures or account existence to the caller.
+      await em().nativeUpdate(
+        Usuario,
+        { idUsuario: user.idUsuario, resetTokenHash: tokenHash(token) },
+        { resetTokenHash: null, resetExpiresAt: null },
+      );
+      console.error('SMTP_RESET_DELIVERY_FAILED');
     }
-
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
-
-    // Solo pasamos campos permitidos — "rol" queda excluido para evitar escalamiento de privilegios
-    const newUser = em.create(Usuario, {
-      dni,
-      nombre,
-      apellido,
-      email,
-      password: hashedPassword,
-      fechaNacimiento: fechaNacimiento || null,
-    });
-
-    // ⛔ CAMBIO 7: Usamos 'em' (del RequestContext)
-    await em.flush();
-
-    return res
-      .status(201)
-      .json({ message: "Usuario registrado correctamente." });
-  } catch (error: any) {
+  }
+  return res.json({
+    message:
+      'Si el correo está registrado, recibirás un enlace de recuperación',
+  });
+});
+export const resetPassword = handler(async (req, res) => {
+  const token = z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .parse(req.params.token);
+  const { password } = z.object({ password: passwordSchema }).parse(req.body),
+    hash = await bcrypt.hash(password, 12);
+  await em().transactional(async (tx) => {
+    const user = await tx.findOne(
+      Usuario,
+      { resetTokenHash: tokenHash(token) },
+      { lockMode: LockMode.PESSIMISTIC_WRITE },
+    );
     if (
-      error.code === "ER_DUP_ENTRY" ||
-      error.name === "UniqueConstraintViolationException"
-    ) {
-      return res
-        .status(409)
-        .json({ message: "El DNI o Email ya están registrados." });
-    } else {
-      console.error("Error en register:", error); // Es buena idea loguear el error
-      return res
-        .status(500)
-        .json({ message: "Error en el servidor", error: error.message });
-    }
-  }
-  // ⛔ CAMBIO 8: Eliminamos el 'return' final que era inalcanzable.
-};
-
-export const login = async (req: Request, res: Response): Promise<Response> => {
-  // ⛔ CAMBIO 9: Obtenemos el 'em' también aquí
-  const em = RequestContext.getEntityManager()!;
-
-  try {
-    const { email, password } = req.body;
-    console.log("--- Nuevo Intento de Login ---");
-
-    // 1. Buscar al usuario por email
-    // ⛔ CAMBIO 10: Usamos 'em' y 'Usuario' (singular)
-    const user = await em.getRepository(Usuario).findOne({ email });
-
-    if (!user) {
-      console.log("RESULTADO: Usuario no encontrado en la BD.");
-      return res.status(401).json({ message: "Credenciales inválidas." });
-    }
-
-    // 2. Comparar la contraseña
-    const isPasswordCorrect = await bcrypt.compare(password, user.password);
-    if (!isPasswordCorrect) {
-      console.log("FALLO: Las contraseñas no coinciden.");
-      return res.status(401).json({ message: "Credenciales inválidas." });
-    }
-
-    // 3. Crear el token JWT
-    const payload = {
-      idUsuario: user.idUsuario,
-      email: user.email,
-      rol: user.rol, // Ya no es 'any' porque usamos la clase correcta
-    };
-
-    // Es mejor mover el secret a una variable de entorno (.env)
-    const jwtSecret = process.env.JWT_SECRET;
-    if (!jwtSecret) {
-      console.error("Error crítico: JWT_SECRET no está definido en .env");
-      return res.status(500).json({ message: "Error de configuración del servidor." });
-    }
-
-    const token = jwt.sign(payload, jwtSecret, {
-      expiresIn: "1h",
-    });
-
-    console.log("ÉXITO: Login correcto, token generado.");
-    return res.status(200).json({ token });
-  } catch (error: any) {
-    console.error("ERROR CATASTRÓFICO EN LOGIN:", error);
-    return res
-      .status(500)
-      .json({ message: "Error en el servidor", error: error.message });
-  }
-};
+      !user ||
+      !user.resetExpiresAt ||
+      user.resetExpiresAt.getTime() <= Date.now()
+    )
+      throw new HttpError(
+        400,
+        'INVALID_RESET_TOKEN',
+        'El enlace es inválido o venció',
+      );
+    user.password = hash;
+    user.sessionVersion++;
+    user.resetTokenHash = undefined;
+    user.resetExpiresAt = undefined;
+    await tx.nativeUpdate(
+      Usuario,
+      { idUsuario: user.idUsuario },
+      {
+        password: hash,
+        sessionVersion: user.sessionVersion,
+        resetTokenHash: null,
+        resetExpiresAt: null,
+      },
+    );
+  });
+  return res.json({
+    message: 'Contraseña actualizada. Iniciá sesión nuevamente',
+  });
+});

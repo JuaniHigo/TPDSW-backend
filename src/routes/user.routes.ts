@@ -1,26 +1,25 @@
-import { Router } from "express";
+import { Router } from 'express';
+import { isAuth } from '../middlewares/auth.middleware';
+import { isAdmin } from '../middlewares/isAdmin.middleware';
 import {
+  getMe,
+  updateMe,
+  changePassword,
+  getMisEntradas,
   getAllUsers,
   getUserById,
   updateUser,
   deleteUser,
-  getMisEntradas,
-} from "../controllers/user.controller";
-
-import { isAuth } from "../middlewares/auth.middleware";
-import { isAdmin } from "../middlewares/isAdmin.middleware";
-import { validate } from "../middlewares/validate.middleware";
-import { updateUserSchema } from "../schemas/user.schema";
-
+} from '../controllers/user.controller';
 const router = Router();
-
-// --- Rutas de Usuario Autenticado (ANTES de /:id para evitar shadowing) ---
-router.get("/me/entradas", isAuth, getMisEntradas);
-
-// --- Rutas de Administrador ---
-router.get("/", [isAuth, isAdmin], getAllUsers);
-router.get("/:id", [isAuth, isAdmin], getUserById);
-router.put("/:id", [isAuth, isAdmin, validate(updateUserSchema)], updateUser);
-router.delete("/:id", [isAuth, isAdmin], deleteUser);
-
+router.use(isAuth);
+router.get('/me', getMe);
+router.patch('/me', updateMe);
+router.post('/me/password', changePassword);
+router.get('/me/entradas', getMisEntradas);
+router.use(isAdmin);
+router.get('/', getAllUsers);
+router.get('/:id', getUserById);
+router.put('/:id', updateUser);
+router.delete('/:id', deleteUser);
 export default router;

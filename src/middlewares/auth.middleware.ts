@@ -1,44 +1,38 @@
-import passport from "passport";
-import { Strategy as JwtStrategy, ExtractJwt } from "passport-jwt";
-import { orm } from "../app";
-import { Usuario } from "../entities/Usuario";
-
-const opts = {
-  jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-  secretOrKey: process.env.JWT_SECRET as string,
-};
-
-passport.use(
-  new JwtStrategy(opts, async (jwt_payload, done) => {
-    // --- NUESTROS ESPÍAS ---
-    console.log("\n--- 🕵️‍♂️ (DEBUG) MIDDLEWARE 'isAuth' (Passport) ---");
-    console.log("PAYLOAD RECIBIDO DEL TOKEN:", jwt_payload);
-    // --- FIN ESPÍAS ---
-
-    try {
-      const em = orm.em.fork();
-      const user = await em
-        .getRepository(Usuario)
-        .findOne({ idUsuario: jwt_payload.idUsuario }); // La corrección de camelCase
-
-      if (user) {
-        // --- MÁS ESPÍAS ---
-        console.log("ÉXITO: Usuario encontrado en BD:", user.email);
-        // --- FIN ESPÍAS ---
-        return done(null, user); // ✅ El usuario existe
-      }
-
-      // --- MÁS ESPÍAS ---
-      console.log("ERROR: Usuario del token no encontrado en BD.");
-      // --- FIN ESPÍAS ---
-      return done(null, false); // ❌ El usuario no existe
-    } catch (error) {
-      // --- MÁS ESPÍAS ---
-      console.log("ERROR CATASTRÓFICO EN PASSPORT:", error);
-      // --- FIN ESPÍAS ---
-      return done(error, false);
+import { RequestHandler } from 'express';
+import jwt from 'jsonwebtoken';
+import { Usuario } from '../entities/Usuario';
+import { em, HttpError } from '../lib/http';
+import { getEnv } from '../config/env';
+declare global {
+  namespace Express {
+    interface Request {
+      user?: Usuario;
     }
-  })
-);
-
-export const isAuth = passport.authenticate("jwt", { session: false });
+  }
+}
+export const isAuth: RequestHandler = async (req, _res, next) => {
+  try {
+    const token = req.headers.authorization?.match(/^Bearer (.+)$/)?.[1];
+    if (!token)
+      throw new HttpError(401, 'UNAUTHORIZED', 'Iniciá sesión para continuar');
+    let payload: jwt.JwtPayload;
+    try {
+      const decoded = jwt.verify(token, getEnv().JWT_SECRET, {
+        algorithms: ['HS256'],
+      });
+      if (typeof decoded === 'string') throw new Error();
+      payload = decoded;
+    } catch {
+      throw new HttpError(401, 'UNAUTHORIZED', 'La sesión venció');
+    }
+    const user = Number.isInteger(payload.idUsuario)
+      ? await em().findOne(Usuario, { idUsuario: payload.idUsuario })
+      : null;
+    if (!user || user.sessionVersion !== payload.sessionVersion)
+      throw new HttpError(401, 'UNAUTHORIZED', 'La sesión venció');
+    req.user = user;
+    next();
+  } catch (error) {
+    next(error);
+  }
+};

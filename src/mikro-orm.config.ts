@@ -1,43 +1,40 @@
-import dotenv from "dotenv";
-dotenv.config();
-
-import { defineConfig } from "@mikro-orm/core";
-import { MySqlDriver } from "@mikro-orm/mysql"; // <-- 1. Importar el Driver
-
-// Importa todas tus entidades (en singular)
-import { Usuario } from "../src/entities/Usuario";
-import { Club } from "../src/entities/Club";
-import { Estadio } from "../src/entities/Estadio";
-import { Evento } from "../src/entities/Evento";
-import { Sector } from "../src/entities/Sector";
-import { PrecioEventoSector } from "../src/entities/PrecioEventoSector";
-import { Compra } from "../src/entities/Compra";
-import { Entrada } from "../src/entities/Entrada";
-
-// 2. Usar 'defineConfig'
+import 'reflect-metadata';
+import 'dotenv/config';
+import { defineConfig } from '@mikro-orm/mysql';
+import { Migrator } from '@mikro-orm/migrations';
+import { Club } from './entities/Club';
+import { Estadio } from './entities/Estadio';
+import { Sector } from './entities/Sector';
+import { Evento } from './entities/Evento';
+import { PrecioEventoSector } from './entities/PrecioEventoSector';
+import { Compra } from './entities/Compra';
+import { Entrada } from './entities/Entrada';
+import { Usuario } from './entities/Usuario';
+import { Pago } from './entities/Pago';
 export default defineConfig({
-  driver: MySqlDriver, // <-- 3. No más 'type: "mysql"'
-  dbName: process.env.DB_NAME || "kicket_db",
-  user: process.env.DB_USER || "dsw",
-  password: process.env.DB_PASSWORD || "dsw",
-  host: process.env.DB_HOST || "localhost",
-  port: process.env.DB_PORT ? parseInt(process.env.DB_PORT) : 3306,
+  host: process.env.DB_HOST,
+  port: Number(process.env.DB_PORT || 3306),
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  dbName: process.env.DB_NAME,
   entities: [
-    // 4. Registrar todas las entidades
-    Usuario,
     Club,
     Estadio,
-    Evento,
     Sector,
+    Evento,
     PrecioEventoSector,
     Compra,
     Entrada,
+    Usuario,
+    Pago,
   ],
-  // Opcional: Esto ayuda a ts-node
-  tsNode: true,
+  extensions: [Migrator],
+  timezone: 'Z',
   migrations: {
-    path: "dist/migrations",
-    pathTs: "src/migrations",
-    glob: "!(*.d).{js,ts}",
+    path: 'dist/migrations',
+    pathTs: 'src/migrations',
+    glob: '!(*.d).{js,ts}',
+    transactional: false,
+    allOrNothing: false,
   },
 });

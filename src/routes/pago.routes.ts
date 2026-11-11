@@ -1,21 +1,20 @@
-import { Router } from "express";
+import { Router } from 'express';
+import { isAuth } from '../middlewares/auth.middleware';
 import {
-  crearPreferenciaMercadoPago,
-  procesarPagoTarjeta,
+  crearPreferencia,
   recibirConfirmacionPago,
   getEntradasPorCompra,
-} from "../controllers/pagos.controller";
-
-import { isAuth } from "../middlewares/auth.middleware";
-import { validate } from "../middlewares/validate.middleware";
-import { pagoSchema } from "../schemas/pago.schema";
-
+  getCompra,
+  getConfiguracion,
+  getDemo,
+  simularDemo,
+} from '../controllers/pagos.controller';
 const router = Router();
-
-router.post("/crear-preferencia", [isAuth, validate(pagoSchema)], crearPreferenciaMercadoPago);
-router.post("/procesar-tarjeta", [isAuth, validate(pagoSchema)], procesarPagoTarjeta);
-router.get("/entradas/:idCompra", [isAuth], getEntradasPorCompra);
-
-router.post("/webhook", recibirConfirmacionPago);
-
+router.get('/configuracion', getConfiguracion);
+router.get('/demo/:idCompra', isAuth, getDemo);
+router.post('/demo/:idCompra/simular', isAuth, simularDemo);
+router.post('/crear-preferencia', isAuth, crearPreferencia);
+router.get('/compras/:idCompra', isAuth, getCompra);
+router.get('/entradas/:idCompra', isAuth, getEntradasPorCompra);
+router.post('/webhook', recibirConfirmacionPago);
 export default router;

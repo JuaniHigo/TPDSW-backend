@@ -1,209 +1,212 @@
-import { Request, Response } from "express";
-import { QueryOrder, RequestContext, wrap } from "@mikro-orm/core";
-import { Evento } from "../entities/Evento";
-import { Club } from "../entities/Club";
-import { Estadio } from "../entities/Estadio";
-
-// Obtener todos los eventos con detalle y paginación
-export const getAllEventos = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
-  try {
-    // ✅ OBTENEMOS 'em' DEL CONTEXTO
-    const em = RequestContext.getEntityManager()!;
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
-    const offset = (page - 1) * limit;
-
-    // Usamos 'populate' para cargar las relaciones (como un JOIN)
-    // ✅ Usamos 'em' y 'Evento'
-    const [eventos, total] = await em.getRepository(Evento).findAndCount(
+import { LockMode } from '@mikro-orm/core';
+import { Evento, EventosEstado } from '../entities/Evento';
+import { Club } from '../entities/Club';
+import { Estadio } from '../entities/Estadio';
+import { PrecioEventoSector } from '../entities/PrecioEventoSector';
+import { Compra } from '../entities/Compra';
+import { Entrada } from '../entities/Entrada';
+import { em, handler, id, pagination, list, HttpError } from '../lib/http';
+import { eventDto } from '../lib/dto';
+import { occupied, reservingStates } from '../services/checkout';
+const populate = ['fkIdClubLocal', 'fkIdClubVisitante', 'fkIdEstadio'] as const;
+export const getAllEventos = handler(async (req, res) => {
+  const p = pagination(req),
+    [rows, total] = await em().findAndCount(
+      Evento,
       {},
       {
-        populate: ["fkIdClubLocal", "fkIdClubVisitante", "fkIdEstadio"],
-        orderBy: { fechaHora: QueryOrder.DESC },
-        limit,
-        offset,
-      }
-    );
-
-    // MikroORM devuelve las entidades anidadas.
-    // Si quieres aplanar la respuesta como antes, puedes usar .map()
-    // ❗ NOTA: Asegúrate que los nombres de las propiedades (ej. 'fkIdClubLocal')
-    // coincidan con los de tu entidad 'Evento' (singular)
-    const dataAplanada = eventos.map((e) => ({
-      id_evento: e.idEvento,
-      fecha_hora: e.fechaHora,
-      torneo: e.torneo,
-      estado: e.estado,
-      nombre_local: e.fkIdClubLocal?.nombre,
-      logo_local: e.fkIdClubLocal?.logoUrl,
-      nombre_visitante: e.fkIdClubVisitante?.nombre,
-      logo_visitante: e.fkIdClubVisitante?.logoUrl,
-      nombre_estadio: e.fkIdEstadio?.nombre,
-    }));
-
-    res.status(200).json({
-      data: dataAplanada,
-      pagination: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
+        populate: [...populate],
+        limit: p.limit,
+        offset: p.offset,
+        orderBy: { fechaHora: 'desc' },
       },
+    );
+  return res.json(list(rows.map(eventDto), total, p));
+});
+export const getEventoById = handler(async (req, res) => {
+  const e = await em().findOne(
+    Evento,
+    { idEvento: id(req.params.id) },
+    { populate: [...populate] },
+  );
+  if (!e) throw new HttpError(404, 'NOT_FOUND', 'Evento no encontrado');
+  return res.json(eventDto(e));
+});
+export const getSectoresEvento = handler(async (req, res) => {
+  const eid = id(req.params.id),
+    e = await em().findOne(Evento, { idEvento: eid });
+  if (!e) throw new HttpError(404, 'NOT_FOUND', 'Evento no encontrado');
+  const p = pagination(req);
+  const [prices, total] = await em().findAndCount(
+    PrecioEventoSector,
+    { fkIdEvento: eid },
+    {
+      populate: ['fkIdSector'],
+      limit: p.limit,
+      offset: p.offset,
+      orderBy: { fkIdSector: 'asc' },
+    },
+  );
+  const data = await Promise.all(
+    prices.map(async (p) => ({
+      idSector: p.fkIdSector.idSector,
+      nombreSector: p.fkIdSector.nombreSector,
+      capacidad: p.fkIdSector.capacidad ?? null,
+      precio: p.precio,
+      disponibles:
+        e.estado === EventosEstado['EN VENTA'] &&
+        e.fechaHora.getTime() > Date.now()
+          ? Math.max(
+              0,
+              (p.fkIdSector.capacidad ?? 0) -
+                (await occupied(em(), eid, p.fkIdSector.idSector)),
+            )
+          : 0,
+    })),
+  );
+  return res.json(list(data, total, p));
+});
+async function validateRelations(
+  tx: ReturnType<typeof em>,
+  data: Record<string, unknown>,
+  existing?: Evento,
+) {
+  const local = Number(data.fkIdClubLocal ?? existing?.fkIdClubLocal.idClub),
+    away = Number(data.fkIdClubVisitante ?? existing?.fkIdClubVisitante.idClub),
+    stadium = Number(data.fkIdEstadio ?? existing?.fkIdEstadio.idEstadio);
+  if (local === away)
+    throw new HttpError(400, 'INVALID_CLUBS', 'Los clubes deben ser distintos');
+  if (
+    !(await tx.findOne(Club, { idClub: local })) ||
+    !(await tx.findOne(Club, { idClub: away })) ||
+    !(await tx.findOne(Estadio, { idEstadio: stadium }))
+  )
+    throw new HttpError(400, 'INVALID_RELATION', 'Club o estadio inexistente');
+  if ((data.estado ?? existing?.estado) === EventosEstado['EN VENTA']) {
+    const date = data.fechaHora
+      ? new Date(String(data.fechaHora))
+      : existing?.fechaHora;
+    if (!date || date.getTime() <= Date.now())
+      throw new HttpError(400, 'INVALID_DATE', 'El evento debe ser futuro');
+    if (existing) {
+      const prices = await tx.find(
+        PrecioEventoSector,
+        { fkIdEvento: existing.idEvento },
+        { populate: ['fkIdSector'] },
+      );
+      if (
+        !prices.length ||
+        prices.some(
+          (p) =>
+            !p.fkIdSector.capacidad ||
+            p.fkIdSector.fkIdEstadio.idEstadio !== stadium,
+        )
+      )
+        throw new HttpError(
+          409,
+          'INVALID_OFFER',
+          'Configurá precios y capacidad antes de habilitar la venta',
+        );
+    } else
+      throw new HttpError(
+        409,
+        'INVALID_OFFER',
+        'Creá el evento programado y configurá sus precios antes de vender',
+      );
+  }
+  return { local, away, stadium };
+}
+export const createEvento = handler(async (req, res) => {
+  const { local, away, stadium } = await validateRelations(em(), req.body);
+  const e = em().create(Evento, {
+    ...req.body,
+    fkIdClubLocal: local,
+    fkIdClubVisitante: away,
+    fkIdEstadio: stadium,
+    fechaHora: new Date(req.body.fechaHora),
+  });
+  await em().persistAndFlush(e);
+  await em().populate(e, [...populate]);
+  return res.status(201).json(eventDto(e));
+});
+export const updateEvento = handler(async (req, res) => {
+  const result = await em().transactional(async (tx) => {
+    const eid = id(req.params.id),
+      e = await tx.findOne(
+        Evento,
+        { idEvento: eid },
+        { lockMode: LockMode.PESSIMISTIC_WRITE, populate: [...populate] },
+      );
+    if (!e) throw new HttpError(404, 'NOT_FOUND', 'Evento no encontrado');
+    const prices = await tx.find(
+      PrecioEventoSector,
+      { fkIdEvento: eid },
+      { lockMode: LockMode.PESSIMISTIC_WRITE, orderBy: { fkIdSector: 'asc' } },
+    );
+    const related =
+      (await tx.count(Compra, { eventoId: eid })) ||
+      (await tx.count(Entrada, { fkIdEvento: eid }));
+    if (
+      related &&
+      ['fkIdClubLocal', 'fkIdClubVisitante', 'fkIdEstadio'].some(
+        (k) =>
+          req.body[k] !== undefined &&
+          req.body[k] !==
+            (
+              {
+                fkIdClubLocal: e.fkIdClubLocal.idClub,
+                fkIdClubVisitante: e.fkIdClubVisitante.idClub,
+                fkIdEstadio: e.fkIdEstadio.idEstadio,
+              } as Record<string, number>
+            )[k],
+      )
+    )
+      throw new HttpError(409, 'IN_USE', 'El evento tiene compras o entradas');
+    if (
+      !related &&
+      req.body.fkIdEstadio &&
+      req.body.fkIdEstadio !== e.fkIdEstadio.idEstadio &&
+      prices.length
+    )
+      throw new HttpError(
+        409,
+        'HAS_PRICES',
+        'Eliminá los precios antes de cambiar de estadio',
+      );
+    await validateRelations(tx, req.body, e);
+    tx.assign(e, {
+      ...req.body,
+      ...(req.body.fechaHora
+        ? { fechaHora: new Date(req.body.fechaHora) }
+        : {}),
     });
-  } catch (error: any) {
-    console.error("Error en getAllEventos:", error);
-    res
-      .status(500)
-      .json({ message: "Error interno del servidor", error: error.message });
-  }
-};
-
-// Obtener un evento por ID
-export const getEventoById = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
-  const { id } = req.params;
-  try {
-    // ✅ OBTENEMOS 'em' DEL CONTEXTO
-    const em = RequestContext.getEntityManager()!;
-    // ✅ Usamos 'em' y 'Evento'
-    const evento = await em.getRepository(Evento).findOne(+id, {
-      populate: ["fkIdClubLocal", "fkIdClubVisitante", "fkIdEstadio"],
-    });
-
-    if (!evento) {
-      res.status(404).json({ message: "Evento no encontrado" });
-      return;
-    }
-
-    // Aplanamos la respuesta aquí también
-    const plain = wrap(evento).toJSON();
-    const dataAplanada = {
-      ...plain,
-      // --- ✅ LÍNEA CORREGIDA ---
-      // Forzamos a que 'fecha_hora' sea el valor correcto de la entidad,
-      // y no lo que sea que '...plain' estaba mandando.
-      fecha_hora: evento.fechaHora,
-      // --- FIN CORRECCIÓN ---
-      nombre_local: plain.fkIdClubLocal?.nombre,
-      logo_local: plain.fkIdClubLocal?.logoUrl,
-      nombre_visitante: plain.fkIdClubVisitante?.nombre,
-      logo_visitante: plain.fkIdClubVisitante?.logoUrl,
-      nombre_estadio: plain.fkIdEstadio?.nombre,
-    };
-    res.status(200).json(dataAplanada);
-  } catch (error: any) {
-    console.error(`Error en getEventoById (id: ${id}):`, error);
-    res
-      .status(500)
-      .json({ message: "Error interno del servidor", error: error.message });
-  }
-};
-
-// Crear un nuevo evento
-export const createEvento = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
-  try {
-    const em = RequestContext.getEntityManager()!;
-    const { fkIdClubLocal, fkIdClubVisitante, fkIdEstadio, fechaHora, torneo, estado, soloPublicoLocal } = req.body;
-
-    // Verificar que las entidades referenciadas existan
-    const [clubLocal, clubVisitante, estadio] = await Promise.all([
-      em.findOne(Club, { idClub: fkIdClubLocal }),
-      em.findOne(Club, { idClub: fkIdClubVisitante }),
-      em.findOne(Estadio, { idEstadio: fkIdEstadio }),
-    ]);
-
-    if (!clubLocal) {
-      res.status(400).json({ message: "El club local especificado no existe." });
-      return;
-    }
-    if (!clubVisitante) {
-      res.status(400).json({ message: "El club visitante especificado no existe." });
-      return;
-    }
-    if (!estadio) {
-      res.status(400).json({ message: "El estadio especificado no existe." });
-      return;
-    }
-
-    const newEvento = em.create(Evento, {
-      fkIdClubLocal: clubLocal,
-      fkIdClubVisitante: clubVisitante,
-      fkIdEstadio: estadio,
-      fechaHora,
-      torneo,
-      estado,
-      soloPublicoLocal,
-    });
-    await em.flush();
-    res.status(201).json(newEvento);
-  } catch (error: any) {
-    console.error("Error en createEvento:", error);
-    res
-      .status(500)
-      .json({ message: "Error interno del servidor" });
-  }
-};
-
-// Actualizar un evento
-export const updateEvento = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
-  const { id } = req.params;
-  try {
-    // ✅ OBTENEMOS 'em' DEL CONTEXTO
-    const em = RequestContext.getEntityManager()!;
-    // ✅ Usamos 'em' y 'Evento'
-    const evento = await em.getRepository(Evento).findOne(+id);
-
-    if (!evento) {
-      res.status(404).json({ message: "Evento no encontrado para actualizar" });
-      return;
-    }
-
-    const { fkIdClubLocal, fkIdClubVisitante, fkIdEstadio, fechaHora, torneo, estado, soloPublicoLocal } = req.body;
-    wrap(evento).assign({ fkIdClubLocal, fkIdClubVisitante, fkIdEstadio, fechaHora, torneo, estado, soloPublicoLocal });
-    // ✅ Usamos 'em'
-    await em.flush();
-
-    res.status(200).json({ message: "Evento actualizado correctamente" });
-  } catch (error: any) {
-    console.error(`Error en updateEvento (id: ${id}):`, error);
-    res
-      .status(500)
-      .json({ message: "Error interno del servidor", error: error.message });
-  }
-};
-
-// Eliminar un evento
-export const deleteEvento = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
-  const { id } = req.params;
-  try {
-    // ✅ OBTENEMOS 'em' DEL CONTEXTO
-    const em = RequestContext.getEntityManager()!;
-    // ✅ Usamos 'em' y 'Evento'
-    const result = await em.getRepository(Evento).nativeDelete(+id);
-
-    if (result === 0) {
-      res.status(404).json({ message: "Evento no encontrado para eliminar" });
-      return;
-    }
-    res.status(200).json({ message: "Evento eliminado correctamente" });
-  } catch (error: any) {
-    console.error(`Error en deleteEvento (id: ${id}):`, error);
-    res
-      .status(500)
-      .json({ message: "Error interno del servidor", error: error.message });
-  }
-};
+    if (req.body.estado === EventosEstado.CANCELADO)
+      await tx.nativeUpdate(
+        Compra,
+        { eventoId: eid, estadoPago: { $in: reservingStates } },
+        { estadoPago: 'cancelada' },
+      );
+    await tx.flush();
+    await tx.populate(e, [...populate]);
+    return eventDto(e);
+  });
+  return res.json(result);
+});
+export const deleteEvento = handler(async (req, res) => {
+  await em().transactional(async (tx) => {
+    const eid = id(req.params.id),
+      e = await tx.findOne(
+        Evento,
+        { idEvento: eid },
+        { lockMode: LockMode.PESSIMISTIC_WRITE },
+      );
+    if (!e) throw new HttpError(404, 'NOT_FOUND', 'Evento no encontrado');
+    if (
+      (await tx.count(Compra, { eventoId: eid })) ||
+      (await tx.count(Entrada, { fkIdEvento: eid }))
+    )
+      throw new HttpError(409, 'IN_USE', 'El evento tiene compras o entradas');
+    await tx.nativeDelete(Evento, { idEvento: eid });
+  });
+  return res.sendStatus(204);
+});

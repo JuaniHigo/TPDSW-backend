@@ -1,142 +1,90 @@
-import { Request, Response } from "express";
-import { RequestContext, QueryOrder, wrap } from "@mikro-orm/core";
-import { Sector } from "../entities/Sector";
-import { Estadio } from "../entities/Estadio";
-
-export const getAllSectores = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
-  const em = RequestContext.getEntityManager()!;
-  try {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
-    const offset = (page - 1) * limit;
-
-    const [sectores, total] = await em.getRepository(Sector).findAndCount(
-      {},
-      {
-        orderBy: { nombreSector: QueryOrder.ASC },
-        limit,
-        offset,
-      }
+import { LockMode } from '@mikro-orm/core';
+import { Sector } from '../entities/Sector';
+import { Estadio } from '../entities/Estadio';
+import { Evento } from '../entities/Evento';
+import { PrecioEventoSector } from '../entities/PrecioEventoSector';
+import { Compra } from '../entities/Compra';
+import { Entrada } from '../entities/Entrada';
+import { em, handler, id, pagination, list, HttpError } from '../lib/http';
+import { sectorDto } from '../lib/dto';
+import { occupied } from '../services/checkout';
+export const getAllSectores = handler(async (req, res) => {
+  const p = pagination(req),
+    filter = req.query.fkIdEstadio
+      ? { fkIdEstadio: id(req.query.fkIdEstadio) }
+      : {};
+  const [rows, total] = await em().findAndCount(Sector, filter, {
+    limit: p.limit,
+    offset: p.offset,
+    orderBy: { nombreSector: 'asc' },
+  });
+  return res.json(list(rows.map(sectorDto), total, p));
+});
+export const getSectorById = handler(async (req, res) => {
+  const s = await em().findOne(Sector, { idSector: id(req.params.id) });
+  if (!s) throw new HttpError(404, 'NOT_FOUND', 'Sector no encontrado');
+  return res.json(sectorDto(s));
+});
+export const createSector = handler(async (req, res) => {
+  const { fkIdEstadio, nombreSector, capacidad } = req.body;
+  const stadium = await em().findOne(Estadio, { idEstadio: fkIdEstadio });
+  if (!stadium)
+    throw new HttpError(400, 'INVALID_STADIUM', 'Estadio inexistente');
+  const s = em().create(Sector, {
+    fkIdEstadio: stadium,
+    nombreSector,
+    capacidad,
+  });
+  await em().persistAndFlush(s);
+  return res.status(201).json(sectorDto(s));
+});
+export const updateSector = handler(async (req, res) => {
+  const sid = id(req.params.id);
+  const dto = await em().transactional(async (tx) => {
+    const s = await tx.findOne(
+      Sector,
+      { idSector: sid },
+      { lockMode: LockMode.PESSIMISTIC_WRITE },
     );
-
-    res.status(200).json({
-      data: sectores,
-      pagination: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-      },
-    });
-  } catch (error: any) {
-    res
-      .status(500)
-      .json({ message: "Error interno del servidor", error: error.message });
-  }
-};
-
-// Obtener un sector por SU ID (no por clave compuesta)
-export const getSectorById = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
-  const em = RequestContext.getEntityManager()!;
-  const { id } = req.params;
-  try {
-    const sector = await em.getRepository(Sector).findOne(+id);
-
-    if (!sector) {
-      res.status(404).json({ message: "Sector no encontrado" });
-      return;
+    if (!s) throw new HttpError(404, 'NOT_FOUND', 'Sector no encontrado');
+    await tx.find(
+      PrecioEventoSector,
+      { fkIdSector: sid },
+      { lockMode: LockMode.PESSIMISTIC_WRITE, orderBy: { fkIdEvento: 'asc' } },
+    );
+    if (req.body.capacidad !== undefined) {
+      const events = await tx.find(Evento, {
+        fkIdEstadio: s.fkIdEstadio.idEstadio,
+      });
+      for (const e of events)
+        if ((await occupied(tx, e.idEvento, sid)) > req.body.capacidad)
+          throw new HttpError(
+            409,
+            'CAPACITY_CONFLICT',
+            'La capacidad es menor al cupo ocupado',
+          );
     }
-    res.status(200).json(sector);
-  } catch (error: any) {
-    res
-      .status(500)
-      .json({ message: "Error interno del servidor", error: error.message });
-  }
-};
-
-// Crear un nuevo sector
-export const createSector = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
-  const em = RequestContext.getEntityManager()!;
-  try {
-    // req.body ya está limpio por createSectorSchema
-    const { fkIdEstadio, nombreSector, capacidad } = req.body;
-
-    // Verificar que el estadio existe
-    const estadio = await em.findOne(Estadio, { idEstadio: fkIdEstadio });
-    if (!estadio) {
-      res.status(400).json({ message: "El estadio especificado no existe." });
-      return;
-    }
-
-    const newSector = em.create(Sector, {
-      fkIdEstadio: estadio,
-      nombreSector,
-      capacidad,
-    });
-
-    await em.flush();
-    res.status(201).json(newSector);
-  } catch (error: any) {
-    res
-      .status(500)
-      .json({ message: "Error interno del servidor", error: error.message });
-  }
-};
-
-// Actualizar un sector por SU ID
-export const updateSector = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
-  const em = RequestContext.getEntityManager()!;
-  const { id } = req.params;
-  try {
-    const sector = await em.getRepository(Sector).findOne(+id);
-
-    if (!sector) {
-      res.status(404).json({ message: "Sector no encontrado para actualizar" });
-      return;
-    }
-
-    // req.body ya está limpio por updateSectorSchema (solo nombreSector, capacidad)
-    wrap(sector).assign(req.body);
-    await em.flush();
-
-    res.status(200).json({ message: "Sector actualizado correctamente" });
-  } catch (error: any) {
-    res
-      .status(500)
-      .json({ message: "Error interno del servidor", error: error.message });
-  }
-};
-
-// Eliminar un sector por SU ID
-export const deleteSector = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
-  const em = RequestContext.getEntityManager()!;
-  const { id } = req.params;
-  try {
-    const result = await em.getRepository(Sector).nativeDelete(+id);
-
-    if (result === 0) {
-      res.status(404).json({ message: "Sector no encontrado para eliminar" });
-      return;
-    }
-    res.status(200).json({ message: "Sector eliminado correctamente" });
-  } catch (error: any) {
-    res
-      .status(500)
-      .json({ message: "Error interno del servidor", error: error.message });
-  }
-};
+    tx.assign(s, req.body);
+    await tx.flush();
+    return sectorDto(s);
+  });
+  return res.json(dto);
+});
+export const deleteSector = handler(async (req, res) => {
+  await em().transactional(async (tx) => {
+    const sid = id(req.params.id),
+      s = await tx.findOne(
+        Sector,
+        { idSector: sid },
+        { lockMode: LockMode.PESSIMISTIC_WRITE },
+      );
+    if (!s) throw new HttpError(404, 'NOT_FOUND', 'Sector no encontrado');
+    if (
+      (await tx.count(Entrada, { fkIdSector: sid })) ||
+      (await tx.count(Compra, { sectorId: sid }))
+    )
+      throw new HttpError(409, 'IN_USE', 'El sector tiene compras o entradas');
+    await tx.nativeDelete(Sector, { idSector: sid });
+  });
+  return res.sendStatus(204);
+});

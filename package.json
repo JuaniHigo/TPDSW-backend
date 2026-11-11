@@ -5,22 +5,24 @@
   "description": "Este repositorio tiene la finalidad de almacenar la parte correspondiente al back-end de nuestro proyecto",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon src/app.ts",
+    "dev": "nodemon src/server.ts",
     "build": "tsc",
-    "start": "node dist/app.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node dist/server.js",
+    "worker": "ts-node src/worker.ts",
+    "worker:prod": "node dist/worker.js",
+    "audit": "ts-node src/scripts/audit.ts",
+    "migrate": "mikro-orm migration:up",
+    "test": "tsc && vitest run",
+    "test:integration": "tsc && vitest run --config vitest.integration.config.ts",
+    "lint": "tsc --noEmit",
+    "create-admin": "ts-node src/scripts/create-admin.ts"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@mikro-orm/core": "6.5.9",
-    "@mikro-orm/entity-generator": "6.5.9",
     "@mikro-orm/mysql": "6.5.9",
-    "@mikro-orm/reflection": "^6.5.9",
-    "@mikro-orm/sql-highlighter": "1.0.1",
-    "@mikro-orm/sqlite": "^6.5.9",
-    "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.2",
     "compression": "^1.8.1",
     "cors": "^2.8.5",
@@ -29,35 +31,33 @@
     "jsonwebtoken": "^9.0.2",
     "mercadopago": "^2.8.0",
     "mysql2": "^3.14.1",
-    "passport": "^0.7.0",
-    "passport-jwt": "^4.0.1",
-    "qrcode": "^1.5.4",
     "reflect-metadata": "0.2.2",
-    "sqlite3": "^5.1.7",
-    "uuid": "^11.1.0",
-    "zod": "^4.0.13"
+    "zod": "^4.0.13",
+    "@mikro-orm/migrations": "6.5.9",
+    "nodemailer": "^7.0.0",
+    "express-rate-limit": "^7.5.0"
   },
   "devDependencies": {
     "@mikro-orm/cli": "^6.5.9",
-    "@mikro-orm/migrations": "^6.5.9",
-    "@types/bcrypt": "^5.0.2",
-    "@types/bcryptjs": "^3.0.0",
     "@types/compression": "^1.8.1",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^24.3.0",
-    "@types/passport": "^1.0.17",
-    "@types/passport-jwt": "^4.0.1",
-    "@types/qrcode": "^1.5.5",
     "nodemon": "^3.1.10",
     "ts-node": "^10.9.2",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.0",
+    "supertest": "^7.1.0",
+    "@types/supertest": "^6.0.3",
+    "@types/nodemailer": "^6.4.17",
+    "prettier": "3.5.3"
   },
   "mikro-orm": {
     "useTsNode": true,
     "configPaths": [
       "./src/mikro-orm.config.ts"
     ]
-  }
+  },
+  "packageManager": "pnpm@10.11.0"
 }

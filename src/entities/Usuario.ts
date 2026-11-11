@@ -4,16 +4,16 @@ import {
   PrimaryKeyProp,
   Property,
   Opt,
-} from "@mikro-orm/core";
+} from '@mikro-orm/core';
 
 @Entity()
 export class Usuario {
-  [PrimaryKeyProp]?: "idUsuario";
+  [PrimaryKeyProp]?: 'idUsuario';
 
   @PrimaryKey({ unsigned: false })
   idUsuario!: number;
 
-  @Property({ length: 20, unique: "dni_UNIQUE" })
+  @Property({ length: 20, unique: 'dni_UNIQUE' })
   dni!: string;
 
   @Property({ length: 100 })
@@ -22,15 +22,21 @@ export class Usuario {
   @Property({ length: 100 })
   apellido!: string;
 
-  @Property({ unique: "email_UNIQUE" })
+  @Property({ unique: 'email_UNIQUE' })
   email!: string;
 
   @Property()
   password!: string;
 
-  @Property({ type: "date", nullable: true })
+  @Property({ type: 'date', nullable: true })
   fechaNacimiento?: string;
 
-  @Property({ length: 50, default: "user" })
+  @Property({ length: 50, default: 'user' })
   rol!: string & Opt;
+  @Property({ default: 0 })
+  sessionVersion: number & Opt = 0;
+  @Property({ length: 64, nullable: true, hidden: true })
+  resetTokenHash?: string;
+  @Property({ type: 'datetime', nullable: true })
+  resetExpiresAt?: Date;
 }

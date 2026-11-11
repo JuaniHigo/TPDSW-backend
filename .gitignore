@@ -10,3 +10,11 @@
 # Archivos de log y de build
 pnpm-debug.log*
 .tsbuildinfo
+.test-mysql/
+.env.*
+!.env.example
+!.env.demo.example
+/temp/
+/database.sqlite
+/price-event-map.json
+/audit-report.json

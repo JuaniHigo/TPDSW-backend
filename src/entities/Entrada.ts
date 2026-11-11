@@ -1,23 +1,42 @@
-import { Entity, ManyToOne, PrimaryKey, PrimaryKeyProp, Property } from '@mikro-orm/core';
+import {
+  Entity,
+  ManyToOne,
+  PrimaryKey,
+  PrimaryKeyProp,
+  Property,
+} from '@mikro-orm/core';
 import { Sector } from './Sector';
-import { Evento } from './Evento'; 
+import { Evento } from './Evento';
 import { Compra } from './Compra';
+import type { PurchaseSnapshot } from './Compra';
 
 @Entity()
 export class Entrada {
-
   [PrimaryKeyProp]?: 'idEntrada';
 
   @PrimaryKey({ unsigned: false })
   idEntrada!: number;
 
-  @ManyToOne({ entity: () => Sector, updateRule: 'cascade', index: 'fk_Entradas_Sectores_idx' })
+  @ManyToOne({
+    entity: () => Sector,
+    updateRule: 'cascade',
+    index: 'fk_Entradas_Sectores_idx',
+  })
   fkIdSector!: Sector;
 
-  @ManyToOne({ entity: () => Evento, updateRule: 'cascade', index: 'fk_Entradas_Eventos_idx' })
+  @ManyToOne({
+    entity: () => Evento,
+    updateRule: 'cascade',
+    index: 'fk_Entradas_Eventos_idx',
+  })
   fkIdEvento!: Evento; // <-- RELACIÓN NUEVA Y CRÍTICA
 
-  @ManyToOne({ entity: () => Compra, updateRule: 'cascade', index: 'fk_Entradas_Compras_idx', nullable: true })
+  @ManyToOne({
+    entity: () => Compra,
+    updateRule: 'cascade',
+    index: 'fk_Entradas_Compras_idx',
+    nullable: true,
+  })
   fkIdCompra?: Compra; // <-- RELACIÓN NUEVA Y CRÍTICA (nullable: true para que pueda existir sin estar comprada)
 
   @Property({ length: 10, nullable: true })
@@ -29,4 +48,6 @@ export class Entrada {
   @Property({ unique: 'codigo_qr_UNIQUE' })
   codigoQr!: string;
 
+  @Property({ type: 'json', nullable: true })
+  snapshot?: PurchaseSnapshot;
 }
