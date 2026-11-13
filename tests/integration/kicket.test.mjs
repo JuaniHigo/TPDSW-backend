@@ -153,6 +153,35 @@ beforeEach(async () => {
   fixture = await freshFixture();
 });
 describe('reservations and payments with MySQL', () => {
+  it('only reconciles recent purchases and old pending refunds', async () => {
+    const em = orm.em.fork();
+    const purchases = [];
+    for (const [estadoPago, hours] of [
+      ['completada', 49],
+      ['completada', 47],
+      ['reembolsoPendiente', 72],
+    ]) {
+      const c = await checkout();
+      await em.nativeUpdate(
+        Compra,
+        { idCompra: c.idCompra },
+        {
+          estadoPago,
+          fechaCompra: new Date(Date.now() - hours * 3600000),
+        },
+      );
+      purchases.push(c.idCompra);
+    }
+    const searched = [];
+    await reconcile(orm.em.fork(), {
+      ...gateway,
+      async searchPayments(id) {
+        searched.push(id);
+        return [];
+      },
+    });
+    expect(searched).toEqual(purchases.slice(1));
+  });
   it('serializes two buyers competing for the last ticket', async () => {
     await orm.em
       .fork()

@@ -435,6 +435,7 @@ export async function reconcile(
       ? gateway
       : getPaymentGateway(provider, manager);
   // Scan by primary key so old unresolved rows cannot starve newer purchases.
+  const since = new Date(Date.now() - 48 * 60 * 60000);
   let after = 0;
   for (;;) {
     const purchases = await manager.find(
@@ -443,6 +444,10 @@ export async function reconcile(
         idCompra: { $gt: after },
         eventoId: { $ne: null },
         metodoPago: { $in: providers },
+        $or: [
+          { fechaCompra: { $gte: since } },
+          { estadoPago: 'reembolsoPendiente' },
+        ],
         estadoPago: {
           $in: [
             'pendiente',
