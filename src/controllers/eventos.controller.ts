@@ -7,7 +7,7 @@ import { Compra } from '../entities/Compra';
 import { Entrada } from '../entities/Entrada';
 import { em, handler, id, pagination, list, HttpError } from '../lib/http';
 import { eventDto } from '../lib/dto';
-import { occupied, reservingStates } from '../services/checkout';
+import { reservingStates } from '../services/checkout';
 const populate = ['fkIdClubLocal', 'fkIdClubVisitante', 'fkIdEstadio'] as const;
 export const getAllEventos = handler(async (req, res) => {
   const p = pagination(req),
@@ -47,23 +47,40 @@ export const getSectoresEvento = handler(async (req, res) => {
       orderBy: { fkIdSector: 'asc' },
     },
   );
-  const data = await Promise.all(
-    prices.map(async (p) => ({
-      idSector: p.fkIdSector.idSector,
-      nombreSector: p.fkIdSector.nombreSector,
-      capacidad: p.fkIdSector.capacidad ?? null,
-      precio: p.precio,
-      disponibles:
-        e.estado === EventosEstado['EN VENTA'] &&
-        e.fechaHora.getTime() > Date.now()
-          ? Math.max(
-              0,
-              (p.fkIdSector.capacidad ?? 0) -
-                (await occupied(em(), eid, p.fkIdSector.idSector)),
-            )
-          : 0,
-    })),
-  );
+  const now = new Date();
+  const onSale = e.estado === EventosEstado['EN VENTA'] && e.fechaHora > now;
+  const occupiedBySector = new Map<number, number>();
+  if (onSale) {
+    const connection = em().getConnection();
+    const sold: { sectorId: number; quantity: number }[] =
+      await connection.execute(
+        'select fk_id_sector_id_sector as sectorId, count(*) as quantity from entrada where fk_id_evento_id_evento = ? group by fk_id_sector_id_sector',
+        [eid],
+      );
+    const reservations: { sectorId: number; quantity: number }[] =
+      await connection.execute(
+        'select sector_id as sectorId, sum(quantity) as quantity from compra where evento_id = ? and estado_pago in (?, ?) and expires_at > ? group by sector_id',
+        [eid, ...reservingStates, now],
+      );
+    for (const row of [...sold, ...reservations])
+      occupiedBySector.set(
+        row.sectorId,
+        (occupiedBySector.get(row.sectorId) ?? 0) + Number(row.quantity),
+      );
+  }
+  const data = prices.map((p) => ({
+    idSector: p.fkIdSector.idSector,
+    nombreSector: p.fkIdSector.nombreSector,
+    capacidad: p.fkIdSector.capacidad ?? null,
+    precio: p.precio,
+    disponibles: onSale
+      ? Math.max(
+          0,
+          (p.fkIdSector.capacidad ?? 0) -
+            (occupiedBySector.get(p.fkIdSector.idSector) ?? 0),
+        )
+      : 0,
+  }));
   return res.json(list(data, total, p));
 });
 async function validateRelations(

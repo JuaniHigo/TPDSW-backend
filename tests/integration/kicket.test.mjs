@@ -28,6 +28,7 @@ const { createApp } = require('../../dist/app.js');
 const { getEnv } = require('../../dist/config/env.js');
 const {
   createCheckout,
+  occupied,
   processPayment,
   reconcile,
 } = require('../../dist/services/checkout.js');
@@ -637,6 +638,83 @@ describe('incremental migration safeguards', () => {
 });
 
 describe('sale invariants and administration', () => {
+  it('matches per-sector occupancy without adding queries for more sectors', async () => {
+    const sold = await checkout();
+    await processPayment(orm.em.fork(), approved(sold));
+    await checkout();
+    const em = orm.em.fork();
+    const connection = em.getConnection();
+    const execute = vi.spyOn(connection, 'execute');
+    try {
+      const first = await request(app)
+        .get('/api/eventos/' + fixture.event + '/sectores')
+        .expect(200);
+      const queries = execute.mock.calls.length;
+      expect(first.body.data[0].disponibles).toBe(
+        2 - (await occupied(em, fixture.event, fixture.sector)),
+      );
+      const original = await em.findOneOrFail(Sector, fixture.sector);
+      for (let i = 0; i < 4; i++) {
+        const sector = em.create(Sector, {
+          fkIdEstadio: original.fkIdEstadio,
+          nombreSector: 'Sector ' + i,
+          capacidad: 10,
+        });
+        await em.persistAndFlush(sector);
+        await em.persistAndFlush(
+          em.create(PrecioEventoSector, {
+            fkIdEvento: fixture.event,
+            fkIdSector: sector,
+            precio: '10.00',
+          }),
+        );
+        await em.persistAndFlush(
+          em.create(Compra, {
+            fkUsuario: fixture.user,
+            eventoId: fixture.event,
+            sectorId: sector.idSector,
+            quantity: i + 1,
+            montoTotal: '10.00',
+            estadoPago: 'rechazada',
+            expiresAt: new Date(Date.now() + 600000),
+          }),
+        );
+        await em.persistAndFlush(
+          em.create(Compra, {
+            fkUsuario: fixture.user,
+            eventoId: fixture.event,
+            sectorId: sector.idSector,
+            quantity: 9,
+            montoTotal: '10.00',
+            estadoPago: 'pendiente',
+            expiresAt: new Date(0),
+          }),
+        );
+      }
+      execute.mockClear();
+      const response = await request(app)
+        .get('/api/eventos/' + fixture.event + '/sectores')
+        .expect(200);
+      expect(execute.mock.calls.length).toBe(queries);
+      for (const row of response.body.data) {
+        expect(row).toEqual({
+          idSector: row.idSector,
+          nombreSector:
+            row.idSector === fixture.sector
+              ? 'Popular'
+              : 'Sector ' + (row.idSector - fixture.sector - 1),
+          capacidad: row.idSector === fixture.sector ? 2 : 10,
+          precio: '10.00',
+          disponibles: Math.max(
+            0,
+            row.capacidad - (await occupied(em, fixture.event, row.idSector)),
+          ),
+        });
+      }
+    } finally {
+      execute.mockRestore();
+    }
+  });
   async function admin() {
     await orm.em
       .fork()
