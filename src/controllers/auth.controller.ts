@@ -9,6 +9,8 @@ import { userDto } from '../lib/dto';
 import { getEnv } from '../config/env';
 import { mailer } from '../services/mail';
 export const passwordSchema = z.string().min(8).max(72);
+const dummyPasswordHash =
+  '$2b$12$B4vsbQDi7/RH.MmBwHy6OupVP677zyXzIivs35xjoSFfCgAniFzxO';
 export const tokenHash = (token: string) =>
   createHash('sha256').update(token).digest('hex');
 export const register = handler(async (req, res) => {
@@ -44,7 +46,11 @@ export const login = handler(async (req, res) => {
     })
     .parse(req.body);
   const user = await em().findOne(Usuario, { email });
-  if (!user || !(await bcrypt.compare(password, user.password)))
+  const validPassword = await bcrypt.compare(
+    password,
+    user?.password ?? dummyPasswordHash,
+  );
+  if (!user || !validPassword)
     throw new HttpError(401, 'INVALID_CREDENTIALS', 'Credenciales inválidas');
   const token = jwt.sign(
     { idUsuario: user.idUsuario, sessionVersion: user.sessionVersion },

@@ -1,4 +1,12 @@
-import { beforeAll, afterAll, beforeEach, describe, it, expect } from 'vitest';
+import {
+  beforeAll,
+  afterAll,
+  beforeEach,
+  describe,
+  it,
+  expect,
+  vi,
+} from 'vitest';
 import { createRequire } from 'node:module';
 import { randomUUID } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
@@ -289,6 +297,44 @@ describe('reservations and payments with MySQL', () => {
   });
 });
 describe('HTTP authentication and account', () => {
+  it('returns the same response for unknown accounts and wrong passwords', async () => {
+    await account();
+    const compare = vi.spyOn(require('bcryptjs'), 'compare');
+    try {
+      const wrong = await request(app)
+        .post('/api/auth/login')
+        .send({ email: 'person@example.test', password: 'wrong-password' })
+        .expect(401);
+      const missing = await request(app)
+        .post('/api/auth/login')
+        .send({ email: 'missing@example.test', password: 'wrong-password' })
+        .expect(401);
+      expect(missing.body).toEqual(wrong.body);
+      expect(compare).toHaveBeenCalledTimes(2);
+      expect(compare.mock.calls[1][1]).toMatch(/^\$2b\$12\$/);
+    } finally {
+      compare.mockRestore();
+    }
+  });
+  it('does not disclose which registration field is duplicated', async () => {
+    const data = {
+      dni: '12345678',
+      nombre: 'Test',
+      apellido: 'User',
+      email: 'new@example.test',
+      password: 'password123',
+    };
+    const duplicateDni = await request(app)
+      .post('/api/auth/register')
+      .send(data)
+      .expect(409);
+    const duplicateEmail = await request(app)
+      .post('/api/auth/register')
+      .send({ ...data, dni: '23456789', email: 'test@example.test' })
+      .expect(409);
+    expect(duplicateEmail.body).toEqual(duplicateDni.body);
+    expect(duplicateEmail.body.code).toBe('CONFLICT');
+  });
   async function account(email = 'person@example.test') {
     await request(app)
       .post('/api/auth/register')
