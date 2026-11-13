@@ -14,6 +14,7 @@ export const envSchema = z
       .default('development'),
     PAYMENT_MODE: z.enum(['demo', 'mercadopago']).default('mercadopago'),
     PORT: z.coerce.number().int().positive().default(3000),
+    TRUST_PROXY: z.coerce.number().int().min(0).default(0),
     DB_HOST: z.string().min(1),
     DB_PORT: z.coerce.number().int().positive().default(3306),
     DB_USER: z.string().min(1),

@@ -34,6 +34,8 @@ Antes de habilitar `PURCHASES_ENABLED=true`, comprobar en sandbox: pago aprobado
 
 ## Supervisión
 
+Configurar `TRUST_PROXY` con la cantidad de proxies confiables delante del servidor (entero mayor o igual a 0; por defecto `0`). Usar `1` si hay un único proxy y evitar acceso directo al backend que permita falsificar la IP. Express usa esta configuración para resolver la IP del cliente y los límites de `/auth`.
+
 - Sondar /health y /ready.
 - Alertar sobre PAYMENT_RECONCILIATION_FAILED, REFUND_RETRY, SMTP_RESET_DELIVERY_FAILED y WORKER_CYCLE_FAILED.
 - Supervisar compras en revision, reembolsoPendiente y preferencias en unknown; la tabla pago guarda intentos y próxima fecha de reintento.

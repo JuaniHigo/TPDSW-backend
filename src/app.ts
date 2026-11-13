@@ -15,6 +15,7 @@ import preciosRoutes from './routes/precios.routes';
 import pagoRoutes from './routes/pago.routes';
 export function createApp(orm: MikroORM, env: Environment) {
   const app = express();
+  app.set('trust proxy', env.TRUST_PROXY);
   app.disable('x-powered-by');
   app.use(cors({ origin: new URL(env.FRONTEND_URL).origin }));
   app.use(compression());
