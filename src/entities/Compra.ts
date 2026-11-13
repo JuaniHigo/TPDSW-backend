@@ -15,7 +15,6 @@ export class Compra {
   @PrimaryKey({ unsigned: false, autoincrement: true }) // Autoincrement es usualmente mejor
   idCompra!: number;
 
-  // ✅ ARREGLADO (Error 2, 4, 6): Renombrado a 'fkUsuario' para claridad
   @ManyToOne({
     entity: () => Usuario,
     updateRule: 'cascade',
@@ -35,11 +34,9 @@ export class Compra {
   @Property({ type: 'string', length: 50, default: 'Pendiente' })
   estadoPago!: string & Opt;
 
-  // ✅ AÑADIDO (Error 3): Propiedad que faltaba
   @Property({ length: 100, nullable: true, unique: true })
   idPreferenciaMp?: string;
 
-  // ✅ AÑADIDO (Error 5): Propiedad que faltaba
   @Property({ length: 100, nullable: true, unique: true })
   idPagoMp?: string;
   @Property({ nullable: true }) eventoId?: number;
