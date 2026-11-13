@@ -165,6 +165,42 @@ beforeEach(async () => {
   };
 });
 describe('persistent demo payments', () => {
+  it('limits distinct pending checkouts but allows retries of the original purchase', async () => {
+    await orm.em
+      .fork()
+      .nativeUpdate(Sector, { idSector: f.sector }, { capacidad: 100 });
+    const post = (key) =>
+      request(app)
+        .post('/api/pagos/crear-preferencia')
+        .set(auth())
+        .set('Idempotency-Key', key)
+        .send({ eventoId: f.event, sectorId: f.sector, quantity: 1 });
+    const key = randomUUID();
+    const first = await post(key).expect(201);
+    for (let i = 0; i < 25; i++)
+      expect((await post(key).expect(201)).body.idCompra).toBe(
+        first.body.idCompra,
+      );
+    await post(randomUUID()).expect(201);
+    await post(randomUUID()).expect(201);
+    const fourth = await post(randomUUID()).expect(429);
+    expect(fourth.body.code).toBe('TOO_MANY_PENDING');
+    // Distinct failed requests still count toward the 20-request rate limit.
+    for (let i = 0; i < 16; i++) await post(randomUUID()).expect(429);
+    expect((await post(randomUUID()).expect(429)).body.code).toBe(
+      'RATE_LIMITED',
+    );
+    expect((await post(key).expect(201)).body.idCompra).toBe(
+      first.body.idCompra,
+    );
+    // The request limit is keyed by user, even when both users share an IP.
+    await request(app)
+      .post('/api/pagos/crear-preferencia')
+      .set(auth(f.other))
+      .set('Idempotency-Key', randomUUID())
+      .send({ eventoId: f.event, sectorId: f.sector, quantity: 1 })
+      .expect(201);
+  });
   it('creates a credential-free checkout and returns public configuration', async () => {
     const response = await request(app)
       .get('/api/pagos/configuracion')

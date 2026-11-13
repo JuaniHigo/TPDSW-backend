@@ -161,6 +161,50 @@ beforeEach(async () => {
   fixture = await freshFixture();
 });
 describe('reservations and payments with MySQL', () => {
+  it('serializes the pending limit across different events', async () => {
+    const em = orm.em.fork();
+    const original = await em.findOneOrFail(Evento, fixture.event);
+    const inventories = [{ eventoId: fixture.event, sectorId: fixture.sector }];
+    for (let i = 0; i < 3; i++) {
+      const event = em.create(Evento, {
+        fkIdClubLocal: original.fkIdClubLocal,
+        fkIdClubVisitante: original.fkIdClubVisitante,
+        fkIdEstadio: original.fkIdEstadio,
+        fechaHora: original.fechaHora,
+        estado: original.estado,
+      });
+      await em.persistAndFlush(event);
+      const sector = em.create(Sector, {
+        fkIdEstadio: original.fkIdEstadio,
+        nombreSector: 'Concurrent ' + i,
+        capacidad: 2,
+      });
+      await em.persistAndFlush(sector);
+      await em.persistAndFlush(
+        em.create(PrecioEventoSector, {
+          fkIdEvento: event,
+          fkIdSector: sector,
+          precio: '10.00',
+        }),
+      );
+      inventories.push({ eventoId: event.idEvento, sectorId: sector.idSector });
+    }
+    const results = await Promise.allSettled(
+      inventories.map((inventory) =>
+        createCheckout(
+          orm.em.fork(),
+          fixture.user,
+          { ...inventory, quantity: 1 },
+          randomUUID(),
+          gateway,
+        ),
+      ),
+    );
+    expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(3);
+    expect(results.find((r) => r.status === 'rejected').reason).toMatchObject({
+      code: 'TOO_MANY_PENDING',
+    });
+  });
   it('only reconciles recent purchases and old pending refunds', async () => {
     const em = orm.em.fork();
     const purchases = [];

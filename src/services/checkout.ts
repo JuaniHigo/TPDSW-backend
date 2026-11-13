@@ -6,6 +6,7 @@ import { Evento, EventosEstado } from '../entities/Evento';
 import { Sector } from '../entities/Sector';
 import { PrecioEventoSector } from '../entities/PrecioEventoSector';
 import { Entrada } from '../entities/Entrada';
+import { Usuario } from '../entities/Usuario';
 import { HttpError } from '../lib/http';
 import { cents, decimal } from '../lib/money';
 import { getEnv } from '../config/env';
@@ -17,6 +18,7 @@ import {
 import { getPaymentGateway } from './payments/gateway';
 import { demoPaymentId } from './payments/demo';
 export const reservingStates = ['pendiente', 'rechazada'];
+const MAX_PENDING_PURCHASES = 3;
 export async function occupied(
   tx: EntityManager,
   eventoId: number,
@@ -101,6 +103,14 @@ export async function createCheckout(
           );
         return existing;
       }
+      // Serialize the per-user limit even when checkouts target different events.
+      await tx.findOneOrFail(
+        Usuario,
+        { idUsuario: userId },
+        {
+          lockMode: LockMode.PESSIMISTIC_WRITE,
+        },
+      );
       const { event, sector, price } = await lockInventory(
         tx,
         input.eventoId,
@@ -121,6 +131,18 @@ export async function createCheckout(
           );
         return existing;
       }
+      if (
+        (await tx.count(Compra, {
+          fkUsuario: userId,
+          estadoPago: 'pendiente',
+          expiresAt: { $gt: new Date() },
+        })) >= MAX_PENDING_PURCHASES
+      )
+        throw new HttpError(
+          429,
+          'TOO_MANY_PENDING',
+          'Ya tenés el máximo de compras pendientes. Revisá el estado de tus compras',
+        );
       if (
         event.estado !== EventosEstado['EN VENTA'] ||
         event.fechaHora.getTime() <= Date.now()
