@@ -93,7 +93,11 @@ export const updateUser = handler(async (req, res) => {
         .string()
         .regex(/^\d{7,8}$/)
         .optional(),
-      email: z.string().email().optional(),
+      email: z
+        .string()
+        .email()
+        .transform((s) => s.toLowerCase())
+        .optional(),
       nombre: z.string().min(2).max(100).optional(),
       apellido: z.string().min(2).max(100).optional(),
       fechaNacimiento: z.string().date().nullable().optional(),
@@ -102,7 +106,16 @@ export const updateUser = handler(async (req, res) => {
     .parse(req.body);
   const u = await em().findOne(Usuario, { idUsuario: id(req.params.id) });
   if (!u) throw new HttpError(404, 'NOT_FOUND', 'Usuario no encontrado');
-  await em().nativeUpdate(Usuario, { idUsuario: u.idUsuario }, data);
+  await em().nativeUpdate(
+    Usuario,
+    { idUsuario: u.idUsuario },
+    {
+      ...data,
+      ...(data.email !== undefined && data.email !== u.email
+        ? { sessionVersion: u.sessionVersion + 1 }
+        : {}),
+    },
+  );
   return res.json(
     userDto(
       (await em().findOne(
@@ -114,8 +127,15 @@ export const updateUser = handler(async (req, res) => {
   );
 });
 export const deleteUser = handler(async (req, res) => {
+  const userId = id(req.params.id);
+  if (userId === req.user!.idUsuario)
+    throw new HttpError(
+      400,
+      'CANNOT_DELETE_SELF',
+      'No podés borrar tu propio usuario',
+    );
   const count = await em().nativeDelete(Usuario, {
-    idUsuario: id(req.params.id),
+    idUsuario: userId,
   });
   if (!count) throw new HttpError(404, 'NOT_FOUND', 'Usuario no encontrado');
   return res.sendStatus(204);

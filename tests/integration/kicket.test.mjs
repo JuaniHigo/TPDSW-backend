@@ -558,6 +558,61 @@ describe('sale invariants and administration', () => {
     );
     return token;
   }
+  it('normalizes edited emails and invalidates sessions only when the email changes', async () => {
+    const token = await admin();
+    await request(app)
+      .put('/api/users/' + fixture.user)
+      .auth(token, { type: 'bearer' })
+      .send({ email: 'TEST@EXAMPLE.TEST' })
+      .expect(200);
+    expect(
+      (await orm.em.fork().findOneOrFail(Usuario, fixture.user)).sessionVersion,
+    ).toBe(0);
+    const updated = await request(app)
+      .put('/api/users/' + fixture.user)
+      .auth(token, { type: 'bearer' })
+      .send({ email: 'NEW@EXAMPLE.TEST' })
+      .expect(200);
+    expect(updated.body.email).toBe('new@example.test');
+    expect(
+      (await orm.em.fork().findOneOrFail(Usuario, fixture.user)).sessionVersion,
+    ).toBe(1);
+    await request(app)
+      .get('/api/users/me')
+      .auth(token, { type: 'bearer' })
+      .expect(401);
+  });
+  it('rejects admin self deletion and preserves users with purchases', async () => {
+    const token = await admin();
+    const self = await request(app)
+      .delete('/api/users/' + fixture.user)
+      .auth(token, { type: 'bearer' })
+      .expect(400);
+    expect(self.body.code).toBe('CANNOT_DELETE_SELF');
+    const em = orm.em.fork();
+    const buyer = em.create(Usuario, {
+      dni: '23456789',
+      nombre: 'Buyer',
+      apellido: 'Test',
+      email: 'buyer@example.test',
+      password: 'unused',
+    });
+    await em.persistAndFlush(buyer);
+    await em.persistAndFlush(
+      em.create(Compra, {
+        fkUsuario: buyer,
+        montoTotal: '10.00',
+        estadoPago: 'pendiente',
+      }),
+    );
+    const conflict = await request(app)
+      .delete('/api/users/' + buyer.idUsuario)
+      .auth(token, { type: 'bearer' })
+      .expect(409);
+    expect(conflict.body.code).toBe('CONFLICT');
+    expect(await em.count(Usuario, { idUsuario: buyer.idUsuario })).toBe(1);
+    expect(await em.count(Compra, { fkUsuario: buyer.idUsuario })).toBe(1);
+  });
   it('rejects closed/past events, undefined capacity and a sector in another stadium', async () => {
     const em = orm.em.fork();
     await em.nativeUpdate(
